@@ -1,6 +1,6 @@
 package org.monogram.data.datasource.remote
 
-import com.bettergram.core.DispatcherProvider
+import org.monogram.core.DispatcherProvider
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable

@@ -2,7 +2,7 @@ package org.monogram.data.mapper
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.*
 import org.drinkless.tdlib.TdApi
 import org.monogram.data.chats.ChatCache

@@ -1,7 +1,7 @@
 package org.monogram.data.infra
 
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 

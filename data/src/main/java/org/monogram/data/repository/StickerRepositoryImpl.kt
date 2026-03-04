@@ -1,8 +1,8 @@
 package org.monogram.data.repository
 
 import android.content.Context
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

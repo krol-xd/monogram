@@ -1,4 +1,4 @@
-package com.bettergram.core
+package org.monogram.core
 
 sealed interface AppError {
     data class Network(val cause: Throwable?) : AppError

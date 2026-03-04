@@ -1,6 +1,6 @@
 package org.monogram.data.repository
 
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import org.monogram.domain.models.PrivacyRule
 import org.monogram.domain.repository.PrivacyKey
 import org.monogram.domain.repository.PrivacyRepository

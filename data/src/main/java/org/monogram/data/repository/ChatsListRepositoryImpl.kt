@@ -1,8 +1,8 @@
 package org.monogram.data.repository
 
 import android.util.Log
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*

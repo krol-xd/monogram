@@ -1,8 +1,8 @@
 package org.monogram.data.chats
 
 import android.util.Log
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch

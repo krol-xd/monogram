@@ -6,7 +6,7 @@ import org.monogram.domain.repository.AppPreferencesProvider
 import org.monogram.domain.repository.ExternalProxyRepository
 import kotlinx.coroutines.*
 import androidx.core.net.toUri
-import com.bettergram.core.DispatcherProvider
+import org.monogram.core.DispatcherProvider
 import org.monogram.data.datasource.remote.ExternalProxyDataSource
 import org.monogram.data.datasource.remote.ProxyRemoteDataSource
 

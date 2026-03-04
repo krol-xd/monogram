@@ -1,5 +1,7 @@
 # Monogram
 
+🌍 **Read this in other languages:** [Русский](README_RU.md)
+
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-blue.svg?logo=kotlin)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?logo=android)
 ![TDLib](https://img.shields.io/badge/TDLib-1.8.61-blue)
@@ -43,6 +45,10 @@ API_HASH=your_api_hash
 **3. Build & Run**
 Open the project in **Android Studio**, let Gradle sync, and fire it up!
 
-## Contributing
+### Contribution Guidelines
 
-Pull requests and issues are always welcome! Since the project is actively evolving, please open an issue first to discuss any major changes or features you'd like to implement before writing code.
+*   **Respect Telegram's Terms of Service:** Monogram is an unofficial client. We strictly adhere to the [Telegram API Terms of Service](https://core.telegram.org/api/terms). Contributions that facilitate spam, unauthorized data scraping, or any other violations of Telegram's terms will be rejected.
+*   **Architecture & Patterns:** Maintain the project's **Clean Architecture** and **MVI** flow. Ensure that business logic resides in the `domain` module, data handling in `data`, and UI logic in `presentation`.
+*   **Modern Android Development:** Use Jetpack Compose and Material 3 components. Ensure UI changes are responsive and leverage Material 3 Adaptive for various form factors (phones, tablets, foldables).
+*   **Code Style:** Write clean, idiomatic Kotlin. Follow the existing codebase's formatting and naming conventions.
+*   **Testing:** Verify your changes on multiple device configurations. Ensure that new features do not break existing functionality or performance.

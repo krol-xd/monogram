@@ -2,8 +2,8 @@ package org.monogram.data.di
 
 import android.content.Context
 import android.net.ConnectivityManager
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

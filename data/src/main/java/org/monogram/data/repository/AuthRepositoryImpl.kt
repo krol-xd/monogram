@@ -1,7 +1,7 @@
 package org.monogram.data.repository
 
 import android.os.Build
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi

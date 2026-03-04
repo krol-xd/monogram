@@ -1,4 +1,4 @@
-package com.bettergram.core
+package org.monogram.core
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext

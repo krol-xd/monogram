@@ -1,6 +1,6 @@
 package org.monogram.data.repository
 
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow

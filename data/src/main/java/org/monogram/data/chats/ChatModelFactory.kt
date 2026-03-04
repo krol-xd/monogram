@@ -1,7 +1,7 @@
 package org.monogram.data.chats
 
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import org.monogram.data.gateway.TelegramGateway

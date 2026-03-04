@@ -1,8 +1,8 @@
 package org.monogram.data.infra
 
 import android.util.Log
-import com.bettergram.core.DispatcherProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.drinkless.tdlib.TdApi

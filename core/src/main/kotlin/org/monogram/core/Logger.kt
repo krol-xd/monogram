@@ -1,4 +1,4 @@
-package com.bettergram.core
+package org.monogram.core
 
 enum class LogLevel {
     VERBOSE,

@@ -1,6 +1,6 @@
 package org.monogram.data.infra
 
-import com.bettergram.core.DispatcherProvider
+import org.monogram.core.DispatcherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 

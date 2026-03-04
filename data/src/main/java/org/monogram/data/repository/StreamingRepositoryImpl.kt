@@ -1,7 +1,7 @@
 package org.monogram.data.repository
 
 import androidx.media3.datasource.DataSource
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

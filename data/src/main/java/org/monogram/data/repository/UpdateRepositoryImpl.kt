@@ -6,7 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import androidx.core.content.FileProvider
-import com.bettergram.core.ScopeProvider
+import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
