@@ -3,15 +3,17 @@ package org.monogram.presentation.profile
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.monogram.domain.models.*
 import org.monogram.domain.repository.*
 import org.monogram.presentation.chatsScreen.currentChat.components.VideoPlayerPool
 import org.monogram.presentation.root.AppComponentContext
 import org.monogram.presentation.util.IDownloadUtils
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import org.monogram.presentation.util.componentScope
 
 class DefaultProfileComponent(
@@ -57,11 +59,19 @@ class DefaultProfileComponent(
         scope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                val chat = chatsListRepository.getChatById(chatId)
-                val user = if (chat != null && !chat.isGroup && !chat.isChannel) {
+                val chat = try {
+                    chatsListRepository.getChatById(chatId)
+                } catch (e: Exception) {
+                    null
+                }
+                val user = if (chat == null || (!chat.isGroup && !chat.isChannel)) {
                     userRepository.getUser(chatId)
                 } else null
-                val fullInfo = userRepository.getChatFullInfo(chatId)
+                val fullInfo = try {
+                    userRepository.getChatFullInfo(chatId)
+                } catch (e: Exception) {
+                    null
+                }
                 val description = fullInfo?.description
                 val link = fullInfo?.inviteLink
                     ?: chat?.username?.let { "https://t.me/$it" }
@@ -83,7 +93,11 @@ class DefaultProfileComponent(
 
                 val linkedChatId = fullInfo?.linkedChatId?.takeIf { it != 0L }
                 val linkedChat = linkedChatId?.let {
-                    chatsListRepository.getChatById(it)
+                    try {
+                        chatsListRepository.getChatById(it)
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
 
                 _state.update {

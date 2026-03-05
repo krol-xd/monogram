@@ -1,43 +1,18 @@
 package org.monogram.data.repository
 
-import org.monogram.core.ScopeProvider
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
+import org.monogram.core.ScopeProvider
 import org.monogram.data.datasource.cache.ChatLocalDataSource
 import org.monogram.data.datasource.cache.UserLocalDataSource
 import org.monogram.data.datasource.remote.UserRemoteDataSource
 import org.monogram.data.gateway.UpdateDispatcher
-import org.monogram.data.mapper.user.mapBasicGroupFullInfoToChat
-import org.monogram.data.mapper.user.mapSupergroupFullInfoToChat
-import org.monogram.data.mapper.user.mapUserFullInfoToChat
-import org.monogram.data.mapper.user.toApi
-import org.monogram.data.mapper.user.toDomain
-import org.monogram.domain.models.BirthdateModel
-import org.monogram.domain.models.BotCommandModel
-import org.monogram.domain.models.BotInfoModel
-import org.monogram.domain.models.BotMenuButtonModel
-import org.monogram.domain.models.BusinessOpeningHoursModel
-import org.monogram.domain.models.ChatFullInfoModel
-import org.monogram.domain.models.ChatModel
-import org.monogram.domain.models.ChatRevenueStatisticsModel
-import org.monogram.domain.models.ChatStatisticsModel
-import org.monogram.domain.models.GroupMemberModel
-import org.monogram.domain.models.PremiumFeatureType
-import org.monogram.domain.models.PremiumLimitType
-import org.monogram.domain.models.PremiumSource
-import org.monogram.domain.models.PremiumStateModel
-import org.monogram.domain.models.StatisticsGraphModel
-import org.monogram.domain.models.UserModel
+import org.monogram.data.mapper.user.*
+import org.monogram.domain.models.*
 import org.monogram.domain.repository.ChatMemberStatus
 import org.monogram.domain.repository.ChatMembersFilter
 import org.monogram.domain.repository.UserRepository
@@ -54,6 +29,7 @@ class UserRepositoryImpl(
     private val scope = scopeProvider.appScope
     private var currentUserId: Long = 0L
     private val userRequests = ConcurrentHashMap<Long, Deferred<TdApi.User?>>()
+    private val fullInfoRequests = ConcurrentHashMap<Long, Deferred<TdApi.UserFullInfo?>>()
 
     private val _currentUserFlow = MutableStateFlow<UserModel?>(null)
     override val currentUserFlow = _currentUserFlow.asStateFlow()
@@ -84,6 +60,7 @@ class UserRepositoryImpl(
             updates.file.collect { update ->
                 val file = update.file
                 if (file.local.isDownloadingCompleted) {
+                    // Check if this file is a user profile photo
                     userLocal.getAllUsers().forEach { user ->
                         val small = user.profilePhoto?.small
                         val big = user.profilePhoto?.big
@@ -92,6 +69,7 @@ class UserRepositoryImpl(
                             if (user.id == currentUserId) refreshCurrentUser()
                         }
                     }
+                    // Check if this file is a chat photo
                     chatLocal.getAllChats().forEach { chat ->
                         val small = chat.photo?.small
                         val big = chat.photo?.big
@@ -119,6 +97,7 @@ class UserRepositoryImpl(
     }
 
     override suspend fun getUser(userId: Long): UserModel? {
+        if (userId <= 0) return null
         userLocal.getUser(userId)?.let {
             return it.toDomain(userLocal.getUserFullInfo(userId))
         }
@@ -134,7 +113,31 @@ class UserRepositoryImpl(
         }
     }
 
+    override suspend fun getUserFullInfo(userId: Long): UserModel? {
+        if (userId <= 0) return null
+        val user = userLocal.getUser(userId) ?: remote.getUser(userId)?.also { userLocal.putUser(it) } ?: return null
+
+        val cachedFullInfo = userLocal.getUserFullInfo(userId)
+        if (cachedFullInfo != null) return user.toDomain(cachedFullInfo)
+
+        val deferred = fullInfoRequests.getOrPut(userId) {
+            scope.async {
+                remote.getUserFullInfo(userId)?.also { userLocal.putUserFullInfo(userId, it) }
+            }
+        }
+        return try {
+            val fullInfo = deferred.await()
+            user.toDomain(fullInfo)
+        } finally {
+            fullInfoRequests.remove(userId)
+        }
+    }
+
     override fun getUserFlow(userId: Long): Flow<UserModel?> = flow {
+        if (userId <= 0) {
+            emit(null)
+            return@flow
+        }
         emit(getUser(userId))
         _userUpdateFlow
             .filter { it == userId }
@@ -142,6 +145,7 @@ class UserRepositoryImpl(
     }
 
     override suspend fun getUserProfilePhotos(userId: Long, offset: Int, limit: Int): List<String> {
+        if (userId <= 0) return emptyList()
         val result = remote.getUserProfilePhotos(userId, offset, limit) ?: return emptyList()
         return result.photos.mapNotNull { photo ->
             val big = photo.sizes.lastOrNull()
@@ -155,28 +159,44 @@ class UserRepositoryImpl(
     }
 
     override fun getUserProfilePhotosFlow(userId: Long): Flow<List<String>> = flow {
+        if (userId <= 0) {
+            emit(emptyList())
+            return@flow
+        }
         emit(getUserProfilePhotos(userId))
         updates.file.collect { emit(getUserProfilePhotos(userId)) }
     }
 
     override suspend fun getChatFullInfo(chatId: Long): ChatFullInfoModel? {
-        val chat = chatLocal.getChat(chatId) ?: remote.getChat(chatId) ?: return null
-        return when (val type = chat.type) {
-            is TdApi.ChatTypePrivate -> {
-                val fullInfo = remote.getUserFullInfo(type.userId) ?: return null
-                userLocal.putUserFullInfo(type.userId, fullInfo)
-                fullInfo.mapUserFullInfoToChat()
+        if (chatId > 0) {
+            val fullInfo = userLocal.getUserFullInfo(chatId) ?: remote.getUserFullInfo(chatId)?.also {
+                userLocal.putUserFullInfo(chatId, it)
             }
+            return fullInfo?.mapUserFullInfoToChat()
+        }
+
+        // It's a group or channel (chatId < 0)
+        val chat = chatLocal.getChat(chatId) ?: try {
+            remote.getChat(chatId)?.also { chatLocal.putChat(it) }
+        } catch (e: Exception) {
+            null
+        } ?: return null
+
+        return when (val type = chat.type) {
             is TdApi.ChatTypeSupergroup -> {
-                val fullInfo = remote.getSupergroupFullInfo(type.supergroupId) ?: return null
+                val fullInfo = chatLocal.getSupergroupFullInfo(type.supergroupId)
+                    ?: remote.getSupergroupFullInfo(type.supergroupId)?.also {
+                        chatLocal.putSupergroupFullInfo(type.supergroupId, it)
+                    }
                 val supergroup = remote.getSupergroup(type.supergroupId)
-                chatLocal.putSupergroupFullInfo(type.supergroupId, fullInfo)
-                fullInfo.mapSupergroupFullInfoToChat(supergroup)
+                fullInfo?.mapSupergroupFullInfoToChat(supergroup)
             }
             is TdApi.ChatTypeBasicGroup -> {
-                val fullInfo = remote.getBasicGroupFullInfo(type.basicGroupId) ?: return null
-                chatLocal.putBasicGroupFullInfo(type.basicGroupId, fullInfo)
-                fullInfo.mapBasicGroupFullInfoToChat()
+                val fullInfo = chatLocal.getBasicGroupFullInfo(type.basicGroupId)
+                    ?: remote.getBasicGroupFullInfo(type.basicGroupId)?.also {
+                        chatLocal.putBasicGroupFullInfo(type.basicGroupId, it)
+                    }
+                fullInfo?.mapBasicGroupFullInfoToChat()
             }
             else -> null
         }

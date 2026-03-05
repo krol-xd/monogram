@@ -62,12 +62,28 @@ class MessageRepositoryImpl(
 
     override suspend fun openChat(chatId: Long) {
         messageRemoteDataSource.setChatOpened(chatId)
-        gateway.execute(TdApi.OpenChat(chatId))
+        try {
+            gateway.execute(TdApi.OpenChat(chatId))
+        } catch (e: Exception) {
+            Log.e("MessageRepository", "Error opening chat $chatId", e)
+            if (chatId > 0) {
+                try {
+                    gateway.execute(TdApi.CreatePrivateChat(chatId, false))
+                    gateway.execute(TdApi.OpenChat(chatId))
+                } catch (e2: Exception) {
+                    Log.e("MessageRepository", "Failed to create and open private chat $chatId", e2)
+                }
+            }
+        }
     }
 
     override suspend fun closeChat(chatId: Long) {
         messageRemoteDataSource.setChatClosed(chatId)
-        gateway.execute(TdApi.CloseChat(chatId))
+        try {
+            gateway.execute(TdApi.CloseChat(chatId))
+        } catch (e: Exception) {
+            Log.e("MessageRepository", "Error closing chat $chatId", e)
+        }
     }
 
     override suspend fun sendMessage(

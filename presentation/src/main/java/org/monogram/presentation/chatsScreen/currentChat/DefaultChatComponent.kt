@@ -142,11 +142,13 @@ class DefaultChatComponent(
     private fun initialLoad() {
         scope.launch {
             repositoryMessage.openChat(chatId)
+            withContext(Dispatchers.Main) {
+                loadChatInfo()
+                loadDraft()
+                loadPinnedMessage()
+                loadMembers()
+            }
         }
-        loadChatInfo()
-        loadDraft()
-        loadPinnedMessage()
-        loadMembers()
     }
 
     private fun startAutoLoad() {
@@ -274,7 +276,14 @@ class DefaultChatComponent(
 
     override fun onProfileClicked() = onProfileClick()
     override fun onMessageClicked(id: Long) = toProfile(id)
-    override fun onMessageVisible(messageId: Long) = handleMessageVisible(messageId)
+    override fun onMessageVisible(messageId: Long) {
+        handleMessageVisible(messageId)
+        scope.launch {
+            _state.value.messages.find { it.id == messageId }?.senderId?.let { senderId ->
+                if (senderId > 0) userRepository.getUserFullInfo(senderId)
+            }
+        }
+    }
 
     override fun onReplyMessage(message: MessageModel) {
         _state.update { it.copy(replyMessage = message, editingMessage = null) }
@@ -455,8 +464,6 @@ class DefaultChatComponent(
     override fun onDismissVoters() {
         _state.update { it.copy(showPollVoters = false, pollVoters = emptyList(), isPollVotersLoading = false) }
     }
-    override fun onClosePoll(messageId: Long) = handleClosePoll(messageId)
-
     override fun onTopicClick(topicId: Int) {
         cancelAllLoadingJobs()
         _state.update { it.copy(currentTopicId = topicId.toLong(), messages = emptyList()) }
@@ -670,4 +677,6 @@ class DefaultChatComponent(
     override fun onInlineQueryChange(botUsername: String, query: String) = handleInlineQueryChange(botUsername, query)
     override fun onLoadMoreInlineResults(offset: String) = handleLoadMoreInlineResults(offset)
     override fun onSendInlineResult(resultId: String) = handleSendInlineResult(resultId)
+
+    override fun onClosePoll(messageId: Long) = handleClosePoll(messageId)
 }
