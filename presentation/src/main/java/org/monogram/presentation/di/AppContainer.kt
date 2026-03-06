@@ -1,16 +1,16 @@
 package org.monogram.presentation.di
 
 import coil3.ImageLoader
+import kotlinx.coroutines.CoroutineScope
 import org.monogram.core.DispatcherProvider
 import org.monogram.core.Logger
-import kotlinx.coroutines.CoroutineScope
 import org.monogram.domain.managers.*
 import org.monogram.domain.repository.*
-import org.monogram.presentation.chatsScreen.currentChat.components.ExoPlayerCache
-import org.monogram.presentation.chatsScreen.currentChat.components.VideoPlayerPool
-import org.monogram.presentation.settingsScreens.storage.CacheController
-import org.monogram.presentation.util.AppPreferences
-import org.monogram.presentation.util.IDownloadUtils
+import org.monogram.presentation.core.util.AppPreferences
+import org.monogram.presentation.core.util.IDownloadUtils
+import org.monogram.presentation.features.chats.currentChat.components.ExoPlayerCache
+import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
+import org.monogram.presentation.settings.storage.CacheController
 
 interface AppContainer {
     val preferences: PreferencesContainer

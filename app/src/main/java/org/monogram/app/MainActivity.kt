@@ -20,7 +20,7 @@ import org.koin.android.ext.android.inject
 import org.monogram.data.service.TdNotificationService
 import org.monogram.domain.repository.AppPreferencesProvider
 import org.monogram.domain.repository.PushProvider
-import org.monogram.presentation.chatsScreen.currentChat.components.chats.LocalLinkHandler
+import org.monogram.presentation.features.chats.currentChat.components.chats.LocalLinkHandler
 import org.monogram.presentation.root.DefaultAppComponentContext
 import org.monogram.presentation.root.DefaultRootComponent
 import org.monogram.presentation.root.RootComponent
