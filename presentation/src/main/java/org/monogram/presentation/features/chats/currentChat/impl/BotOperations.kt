@@ -188,3 +188,7 @@ internal fun DefaultChatComponent.handleKeyboardButtonClick(
         }
     }
 }
+
+internal fun DefaultChatComponent.handleBotCommandClick(command: String) {
+    onSendMessage(command)
+}

@@ -6,6 +6,7 @@ import org.monogram.domain.models.ChatModel
 import org.monogram.domain.models.ChatType
 import org.monogram.domain.models.UserStatusType
 import org.monogram.domain.models.UserTypeEnum
+import org.monogram.domain.repository.ChatMemberStatus
 import org.monogram.presentation.core.util.getUserStatusText
 import org.monogram.presentation.features.chats.currentChat.DefaultChatComponent
 
@@ -131,5 +132,51 @@ internal fun DefaultChatComponent.updateChatState(chat: ChatModel) {
             permissions = chat.permissions,
             isMember = chat.isMember
         )
+    }
+}
+
+internal fun DefaultChatComponent.handleToggleMute() {
+    chatsListRepository.toggleMuteChats(setOf(chatId), !_state.value.isMuted)
+}
+
+internal fun DefaultChatComponent.handleClearHistory() {
+    chatsListRepository.clearChatHistory(chatId, true)
+}
+
+internal fun DefaultChatComponent.handleDeleteChat() {
+    chatsListRepository.deleteChats(setOf(chatId))
+    onBackClicked()
+}
+
+internal fun DefaultChatComponent.handleJoinChat() {
+    scope.launch {
+        userRepository.setChatMemberStatus(chatId, userRepository.getMe().id, ChatMemberStatus.Member)
+    }
+}
+
+internal fun DefaultChatComponent.handleBlockUser(userId: Long) {
+    scope.launch {
+        privacyRepository.blockUser(userId)
+    }
+}
+
+internal fun DefaultChatComponent.handleUnblockUser(userId: Long) {
+    scope.launch {
+        privacyRepository.unblockUser(userId)
+    }
+}
+
+internal fun DefaultChatComponent.handleConfirmRestrict(
+    permissions: org.monogram.domain.models.ChatPermissionsModel,
+    untilDate: Int
+) {
+    val userId = _state.value.restrictUserId ?: return
+    scope.launch {
+        userRepository.setChatMemberStatus(
+            chatId,
+            userId,
+            ChatMemberStatus.Restricted(isMember = true, restrictedUntilDate = untilDate, permissions = permissions)
+        )
+        _state.update { it.copy(restrictUserId = null) }
     }
 }

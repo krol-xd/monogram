@@ -103,3 +103,19 @@ internal fun DefaultChatComponent.handleSendReaction(messageId: Long, reaction: 
         currentState.copy(messages = currentMessages)
     }
 }
+
+internal fun DefaultChatComponent.handlePinMessage(message: MessageModel) {
+    scope.launch {
+        repositoryMessage.pinMessage(chatId, message.id)
+    }
+}
+
+internal fun DefaultChatComponent.handleUnpinMessage(message: MessageModel) {
+    scope.launch {
+        repositoryMessage.unpinMessage(chatId, message.id)
+    }
+}
+
+internal fun DefaultChatComponent.handleClearMessages() {
+    chatsListRepository.clearChatHistory(chatId, false)
+}

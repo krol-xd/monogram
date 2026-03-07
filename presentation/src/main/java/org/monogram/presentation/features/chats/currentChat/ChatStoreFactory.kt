@@ -72,11 +72,9 @@ class ChatStoreFactory(
                 is Intent.CancelEdit -> component._state.update { it.copy(editingMessage = null) }
                 is Intent.SaveEditedMessage -> component.handleSaveEditedMessage(intent.text, intent.entities)
                 is Intent.DraftChange -> component.handleDraftChange(intent.text)
-                is Intent.PinMessage -> { /* Handle pin */
-                }
+                is Intent.PinMessage -> component.handlePinMessage(intent.message)
 
-                is Intent.UnpinMessage -> { /* Handle unpin */
-                }
+                is Intent.UnpinMessage -> component.handleUnpinMessage(intent.message)
 
                 is Intent.PinnedMessageClick -> component.handlePinnedMessageClick(intent.message)
                 is Intent.ShowAllPinnedMessages -> component._state.update { it.copy(showPinnedMessagesList = true) }
@@ -97,21 +95,19 @@ class ChatStoreFactory(
                 is Intent.SendReaction -> component.handleSendReaction(intent.messageId, intent.reaction)
                 is Intent.ToggleMessageSelection -> component.handleToggleMessageSelection(intent.messageId)
                 is Intent.ClearSelection -> component.handleClearSelection()
-                is Intent.ClearMessages -> { /* Handle clear messages */
-                }
+                is Intent.ClearMessages -> component.handleClearMessages()
 
                 is Intent.DeleteSelectedMessages -> component.handleDeleteSelectedMessages(intent.revoke)
                 is Intent.CopySelectedMessages -> component.handleCopySelectedMessages(intent.clipboardManager)
                 is Intent.StickerClick -> component.handleStickerClick(intent.setId)
                 is Intent.DismissStickerSet -> component._state.update { it.copy(selectedStickerSet = null) }
-                is Intent.AddToGifs -> component.handleStickerClick(0) // Placeholder
+                is Intent.AddToGifs -> component.handleAddToGifs(intent.path)
                 is Intent.PollOptionClick -> component.handlePollOptionClick(intent.messageId, intent.optionId)
                 is Intent.RetractVote -> component.handleRetractVote(intent.messageId)
                 is Intent.ShowVoters -> component.handleShowVoters(intent.messageId, intent.optionId)
                 is Intent.DismissVoters -> component._state.update { it.copy(showPollVoters = false) }
                 is Intent.ClosePoll -> component.handleClosePoll(intent.messageId)
-                is Intent.TopicClick -> { /* Handle topic click */
-                }
+                is Intent.TopicClick -> component.handleTopicClick(intent.topicId)
 
                 is Intent.OpenInstantView -> publish(Label.Link(intent.url))
                 is Intent.DismissInstantView -> component._state.update { it.copy(instantViewUrl = null) }
@@ -162,8 +158,7 @@ class ChatStoreFactory(
 
                 is Intent.AddToAdBlockWhitelist -> component.onAddToAdBlockWhitelist()
                 is Intent.RemoveFromAdBlockWhitelist -> component.onRemoveFromAdBlockWhitelist()
-                is Intent.ToggleMute -> { /* Handle mute */
-                }
+                is Intent.ToggleMute -> component.handleToggleMute()
 
                 is Intent.SearchToggle -> component._state.update {
                     it.copy(
@@ -173,31 +168,24 @@ class ChatStoreFactory(
                 }
 
                 is Intent.SearchQueryChange -> component._state.update { it.copy(searchQuery = intent.query) }
-                is Intent.ClearHistory -> { /* Handle clear history */
-                }
+                is Intent.ClearHistory -> component.handleClearHistory()
 
-                is Intent.DeleteChat -> { /* Handle delete chat */
-                }
+                is Intent.DeleteChat -> component.handleDeleteChat()
 
                 is Intent.Report -> component._state.update { it.copy(showReportDialog = true) }
-                is Intent.ReportMessage -> { /* Handle report message */
-                }
+                is Intent.ReportMessage -> component.handleReportMessage(intent.message)
 
-                is Intent.ReportReasonSelected -> { /* Handle report reason */
-                }
+                is Intent.ReportReasonSelected -> component.handleReportReasonSelected(intent.reason)
 
                 is Intent.DismissReportDialog -> component._state.update { it.copy(showReportDialog = false) }
-                is Intent.CopyLink -> { /* Handle copy link */
-                }
+                is Intent.CopyLink -> component.handleCopyLink(intent.clipboardManager)
 
                 is Intent.ScrollToMessage -> component.scrollToMessageInternal(intent.messageId)
-                is Intent.BotCommandClick -> { /* Handle bot command */
-                }
+                is Intent.BotCommandClick -> component.handleBotCommandClick(intent.command)
 
                 is Intent.ShowBotCommands -> component._state.update { it.copy(showBotCommands = true) }
                 is Intent.DismissBotCommands -> component._state.update { it.copy(showBotCommands = false) }
-                is Intent.CommentsClick -> { /* Handle comments click */
-                }
+                is Intent.CommentsClick -> component.handleCommentsClick(intent.messageId)
 
                 is Intent.ReplyMarkupButtonClick -> component.handleReplyMarkupButtonClick(
                     intent.messageId,
@@ -220,18 +208,14 @@ class ChatStoreFactory(
                     onMembersUpdated = { component.allMembers = it }
                 )
 
-                is Intent.JoinChat -> { /* Handle join chat */
-                }
+                is Intent.JoinChat -> component.handleJoinChat()
 
-                is Intent.BlockUser -> { /* Handle block user */
-                }
+                is Intent.BlockUser -> component.handleBlockUser(intent.userId)
 
-                is Intent.UnblockUser -> { /* Handle unblock user */
-                }
+                is Intent.UnblockUser -> component.handleUnblockUser(intent.userId)
 
                 is Intent.RestrictUser -> component._state.update { it.copy(restrictUserId = intent.userId) }
-                is Intent.ConfirmRestrict -> { /* Handle confirm restrict */
-                }
+                is Intent.ConfirmRestrict -> component.handleConfirmRestrict(intent.permissions, intent.untilDate)
 
                 is Intent.DismissRestrictDialog -> component._state.update { it.copy(restrictUserId = null) }
                 is Intent.InlineQueryChange -> component.handleInlineQueryChange(intent.botUsername, intent.query)

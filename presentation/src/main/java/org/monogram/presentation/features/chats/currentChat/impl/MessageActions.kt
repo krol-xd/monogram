@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import org.monogram.domain.models.GifModel
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageEntity
+import org.monogram.domain.models.MessageModel
 import org.monogram.presentation.features.chats.currentChat.DefaultChatComponent
 import org.monogram.presentation.features.chats.currentChat.editor.video.VideoQuality
 import org.monogram.presentation.features.chats.currentChat.editor.video.VideoTrimRange
@@ -243,4 +244,21 @@ internal fun DefaultChatComponent.handleCopySelectedMessages(clipboardManager: C
         clipboardManager.setText(AnnotatedString(text))
     }
     onClearSelection()
+}
+
+internal fun DefaultChatComponent.handleReportMessage(message: MessageModel) {
+
+}
+
+internal fun DefaultChatComponent.handleReportReasonSelected(reason: String) {
+    chatsListRepository.reportChat(chatId, reason)
+}
+
+internal fun DefaultChatComponent.handleCopyLink(clipboardManager: ClipboardManager) {
+    scope.launch {
+        val link = chatsListRepository.getChatLink(chatId)
+        if (link != null) {
+            clipboardManager.setText(AnnotatedString(link))
+        }
+    }
 }

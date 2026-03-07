@@ -125,22 +125,23 @@ internal fun DefaultChatComponent.loadMessages(force: Boolean = false) {
     }
 }
 
-private suspend fun DefaultChatComponent.loadComments(threadId: Long) {
+internal suspend fun DefaultChatComponent.loadComments(threadId: Long) {
     lastLoadedOlderId = 0L
     lastLoadedNewerId = 0L
     val messages = repositoryMessage.getMessagesNewer(chatId, threadId, PAGE_SIZE, threadId)
     val reachedEnd = messages.size < PAGE_SIZE
+
     _state.update {
         it.copy(
-            isAtBottom = reachedEnd,
+            isAtBottom = false,
             isLatestLoaded = reachedEnd,
             isOldestLoaded = true,
-            scrollToMessageId = null
+            scrollToMessageId = messages.firstOrNull()?.id
         )
     }
     updateMessages(messages, replace = true)
+
     if (!reachedEnd) {
-        delay(200)
         loadNewerMessages()
     }
 }
@@ -160,7 +161,7 @@ private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {
     }
     updateMessages(messages, replace = true)
     if (!isOldestLoaded) {
-        delay(200)
+        delay(100)
         loadMoreMessages()
     }
 }
@@ -184,7 +185,7 @@ private suspend fun DefaultChatComponent.loadAroundMessage(
             )
         }
         updateMessages(messages, replace = true)
-        delay(200)
+        delay(100)
         loadMoreMessages()
         loadNewerMessages()
     } else {
@@ -589,5 +590,37 @@ internal fun DefaultChatComponent.loadDraft() {
         if (!draft.isNullOrEmpty()) {
             _state.update { it.copy(draftText = draft) }
         }
+    }
+}
+
+internal fun DefaultChatComponent.handleTopicClick(topicId: Int) {
+    val id = if (topicId == 0) null else topicId.toLong()
+    _state.update {
+        it.copy(
+            currentTopicId = id,
+            messages = emptyList(),
+            isOldestLoaded = false,
+            isLatestLoaded = false,
+            rootMessage = null,
+            isAtBottom = id == null
+        )
+    }
+    loadMessages(force = true)
+}
+
+internal fun DefaultChatComponent.handleCommentsClick(messageId: Long) {
+    scope.launch {
+        val message = _state.value.messages.find { it.id == messageId }
+        _state.update {
+            it.copy(
+                currentTopicId = messageId,
+                rootMessage = message,
+                messages = emptyList(),
+                isOldestLoaded = false,
+                isLatestLoaded = false,
+                isAtBottom = false
+            )
+        }
+        loadComments(messageId)
     }
 }
