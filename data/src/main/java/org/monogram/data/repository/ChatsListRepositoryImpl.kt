@@ -132,20 +132,19 @@ class ChatsListRepositoryImpl(
         }
 
         scope.launch(dispatchers.io) {
-            chatLocalDataSource.getAllChats().collect { entities ->
-                if (entities.isNotEmpty()) {
-                    var added = false
-                    entities.forEach { entity ->
-                        if (!cache.allChats.containsKey(entity.id)) {
-                            cache.putChatFromEntity(entity)
-                            lastSavedEntities[entity.id] = entity
-                            added = true
-                        }
+            val entities = chatLocalDataSource.getAllChats().first()
+            if (entities.isNotEmpty()) {
+                var added = false
+                entities.forEach { entity ->
+                    if (!cache.allChats.containsKey(entity.id)) {
+                        cache.putChatFromEntity(entity)
+                        lastSavedEntities[entity.id] = entity
+                        added = true
                     }
-                    if (added) {
-                        updateActiveListPositionsFromCache()
-                        triggerUpdate()
-                    }
+                }
+                if (added) {
+                    updateActiveListPositionsFromCache()
+                    triggerUpdate()
                 }
             }
         }
@@ -192,7 +191,7 @@ class ChatsListRepositoryImpl(
                         Log.e(TAG, "Error rebuilding chat list", e)
                     }
                 }
-                delay(100)
+                delay(250)
             }
         }
 
