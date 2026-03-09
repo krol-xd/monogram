@@ -49,8 +49,25 @@ class TdUserRemoteDataSource(
 
     override suspend fun getChatMember(chatId: Long, userId: Long): TdApi.ChatMember? =
         runCatching {
+            val chat = gateway.execute(TdApi.GetChat(chatId))
+            val type = chat.type
+            if (type is TdApi.ChatTypeSupergroup) {
+                val supergroup = gateway.execute(TdApi.GetSupergroup(type.supergroupId))
+                if (supergroup.isChannel) {
+                    val me = gateway.execute(TdApi.GetMe())
+                    if (userId != me.id) {
+                        val status = supergroup.status
+                        val canGetOthers = status is TdApi.ChatMemberStatusAdministrator ||
+                                status is TdApi.ChatMemberStatusCreator
+                        if (!canGetOthers) return null
+                    }
+                }
+            }
             gateway.execute(TdApi.GetChatMember(chatId, TdApi.MessageSenderUser(userId)))
-        }.getOrNull()
+        }.getOrElse { e ->
+            // Handle 400 CHANNEL_PRIVATE and other errors gracefully
+            null
+        }
 
     override suspend fun getSupergroupMembers(
         supergroupId: Long,

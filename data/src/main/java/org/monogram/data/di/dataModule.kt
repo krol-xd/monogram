@@ -2,13 +2,14 @@ package org.monogram.data.di
 
 import android.content.Context
 import android.net.ConnectivityManager
-import org.monogram.core.DispatcherProvider
-import org.monogram.core.ScopeProvider
+import androidx.room.Room
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import org.monogram.core.DispatcherProvider
+import org.monogram.core.ScopeProvider
 import org.monogram.data.chats.ChatCache
 import org.monogram.data.chats.ChatMapper
 import org.monogram.data.datasource.FileDataSource
@@ -16,6 +17,7 @@ import org.monogram.data.datasource.PlayerDataSourceFactoryImpl
 import org.monogram.data.datasource.TdFileDataSource
 import org.monogram.data.datasource.cache.*
 import org.monogram.data.datasource.remote.*
+import org.monogram.data.db.MonogramDatabase
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.gateway.TelegramGatewayImpl
 import org.monogram.data.gateway.UpdateDispatcher
@@ -47,13 +49,13 @@ val dataModule = module {
             gateway = get()
         )
     }
-    
+
     factory<AuthRemoteDataSource> {
         TdAuthRemoteDataSource(
             gateway = get()
         )
     }
-    
+
     factory<PlayerDataSourceFactory> {
         PlayerDataSourceFactoryImpl(
             gateway = get()
@@ -68,21 +70,44 @@ val dataModule = module {
             scopeProvider = get()
         )
     }
-    
+
     factory<UserRemoteDataSource> {
         TdUserRemoteDataSource(
             gateway = get()
         )
     }
 
+    // Database
+    single {
+        Room.databaseBuilder(
+            androidContext(),
+            MonogramDatabase::class.java,
+            "monogram_db"
+        ).fallbackToDestructiveMigration(false).build()
+    }
+    single { get<MonogramDatabase>().chatDao() }
+    single { get<MonogramDatabase>().messageDao() }
+    single { get<MonogramDatabase>().userDao() }
+    single { get<MonogramDatabase>().chatFullInfoDao() }
+    single { get<MonogramDatabase>().topicDao() }
+    single { get<MonogramDatabase>().userFullInfoDao() }
+
     single<UserLocalDataSource> {
-        InMemoryUserLocalDataSource()
+        RoomUserLocalDataSource(
+            userDao = get(),
+            userFullInfoDao = get()
+        )
     }
 
     single<ChatLocalDataSource> {
-        InMemoryChatLocalDataSource()
+        RoomChatLocalDataSource(
+            chatDao = get(),
+            messageDao = get(),
+            chatFullInfoDao = get(),
+            topicDao = get()
+        )
     }
-    
+
     single<UserRepository> {
         UserRepositoryImpl(
             remote = get(),
@@ -92,7 +117,7 @@ val dataModule = module {
             scopeProvider = get()
         )
     }
-    
+
     factory<ChatsRemoteDataSource> {
         TdChatsRemoteDataSource(
             gateway = get()
@@ -102,13 +127,14 @@ val dataModule = module {
     single<ChatsCacheDataSource> {
         get<ChatCache>()
     }
-    
+
     single<ChatRemoteSource> {
         TdChatRemoteSource(
-            gateway = get()
+            gateway = get(),
+            connectivityManager = androidContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager,
         )
     }
-    
+
     factory<ProxyRemoteDataSource> {
         TdProxyRemoteDataSource(
             gateway = get()
@@ -143,6 +169,17 @@ val dataModule = module {
         )
     }
 
+    single {
+        ConnectionManager(
+            chatRemoteSource = get(),
+            proxyRemoteSource = get(),
+            updates = get(),
+            appPreferences = get(),
+            dispatchers = get(),
+            scopeProvider = get()
+        )
+    }
+
     single<ChatsListRepository> {
         ChatsListRepositoryImpl(
             remoteDataSource = get(),
@@ -157,10 +194,13 @@ val dataModule = module {
             chatMapper = get(),
             messageMapper = get(),
             gateway = get(),
-            scopeProvider = get()
+            scopeProvider = get(),
+            chatLocalDataSource = get(),
+            connectionManager = get(),
+            databaseFile = androidContext().getDatabasePath("monogram_db")
         )
     }
-    
+
     factory<SettingsRemoteDataSource> {
         TdSettingsRemoteDataSource(
             gateway = get()
@@ -170,7 +210,7 @@ val dataModule = module {
     single<SettingsCacheDataSource> {
         InMemorySettingsCacheDataSource()
     }
-    
+
     single<SettingsRepository> {
         SettingsRepositoryImpl(
             remote = get(),
@@ -211,6 +251,7 @@ val dataModule = module {
             dispatcherProvider = get(),
             scopeProvider = get(),
             fileQueue = get(),
+            chatLocalDataSource = get()
         )
     }
 
@@ -255,13 +296,13 @@ val dataModule = module {
             scopeProvider = get()
         )
     }
-    
+
     factory<PrivacyRemoteDataSource> {
         TdPrivacyRemoteDataSource(
             gateway = get()
         )
     }
-    
+
     single<PrivacyRepository> {
         PrivacyRepositoryImpl(
             remote = get(),

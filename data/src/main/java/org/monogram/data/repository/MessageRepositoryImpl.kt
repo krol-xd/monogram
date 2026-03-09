@@ -9,6 +9,7 @@ import org.monogram.core.DispatcherProvider
 import org.monogram.core.ScopeProvider
 import org.monogram.data.chats.ChatCache
 import org.monogram.data.datasource.FileDataSource
+import org.monogram.data.datasource.cache.ChatLocalDataSource
 import org.monogram.data.datasource.remote.MessageRemoteDataSource
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.mapper.MessageMapper
@@ -33,7 +34,8 @@ class MessageRepositoryImpl(
     private val cache: ChatCache,
     private val fileQueue: FileDataSource,
     private val dispatcherProvider: DispatcherProvider,
-    scopeProvider: ScopeProvider
+    scopeProvider: ScopeProvider,
+    private val chatLocalDataSource: ChatLocalDataSource
 ) : MessageRepository {
     private val scope = scopeProvider.appScope
 
@@ -53,10 +55,18 @@ class MessageRepositoryImpl(
             try {
                 gateway.updates.collect { update ->
                     messageRemoteDataSource.handleUpdate(update)
+                    if (update is TdApi.UpdateNewMessage) {
+                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(update.message))
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("TdLibUpdates", "CRITICAL: Update loop died", e)
             }
+        }
+
+        scope.launch(dispatcherProvider.io) {
+            val oneMonthAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+            chatLocalDataSource.deleteExpired(oneMonthAgo)
         }
     }
 
@@ -144,6 +154,7 @@ class MessageRepositoryImpl(
 
     override suspend fun deleteMessage(chatId: Long, messageIds: List<Long>, revoke: Boolean) {
         messageRemoteDataSource.deleteMessages(chatId, messageIds.toLongArray(), revoke)
+        messageIds.forEach { chatLocalDataSource.deleteMessage(it) }
     }
 
     override suspend fun editMessage(chatId: Long, messageId: Long, newText: String, entities: List<MessageEntity>) {
@@ -170,7 +181,16 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            messageRemoteDataSource.getMessagesOlder(chatId, fromMessageId, limit, threadId)
+            val remoteMessages = messageRemoteDataSource.getMessagesOlder(chatId, fromMessageId, limit, threadId)
+
+            scope.launch(dispatcherProvider.io) {
+                remoteMessages.forEach { model ->
+                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
+                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
+                    }
+                }
+            }
+            remoteMessages
         }
 
     override suspend fun getMessagesNewer(
@@ -180,7 +200,17 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            messageRemoteDataSource.getMessagesNewer(chatId, fromMessageId, limit, threadId)
+            val remoteMessages = messageRemoteDataSource.getMessagesNewer(chatId, fromMessageId, limit, threadId)
+
+            scope.launch(dispatcherProvider.io) {
+                remoteMessages.forEach { model ->
+                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
+                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
+                    }
+                }
+            }
+
+            remoteMessages
         }
 
     override suspend fun getMessagesAround(
@@ -190,7 +220,16 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            messageRemoteDataSource.getMessagesAround(chatId, messageId, limit, threadId)
+            val remoteMessages = messageRemoteDataSource.getMessagesAround(chatId, messageId, limit, threadId)
+
+            scope.launch(dispatcherProvider.io) {
+                remoteMessages.forEach { model ->
+                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
+                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
+                    }
+                }
+            }
+            remoteMessages
         }
 
     @Deprecated("Use getMessagesOlder instead")
@@ -894,9 +933,15 @@ class MessageRepositoryImpl(
 
     override fun clearMessages(chatId: Long) {
         cache.clearMessages(chatId)
+        scope.launch(dispatcherProvider.io) {
+            chatLocalDataSource.clearMessagesForChat(chatId)
+        }
     }
 
     override fun clearAllCache() {
         cache.clearAll()
+        scope.launch(dispatcherProvider.io) {
+            chatLocalDataSource.clearAllChats()
+        }
     }
 }

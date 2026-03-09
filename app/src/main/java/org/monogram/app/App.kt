@@ -6,10 +6,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.telephony.TelephonyManager
+import android.util.Log
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
-import org.monogram.core.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,18 +18,19 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.monogram.app.di.*
+import org.monogram.core.Logger
 import org.monogram.data.di.TdLibClient
 import org.monogram.data.di.TdNotificationManager
 import org.monogram.data.di.dataModule
 import org.monogram.domain.managers.*
 import org.monogram.domain.repository.*
-import org.monogram.presentation.chatsScreen.currentChat.components.ExoPlayerCache
-import org.monogram.presentation.chatsScreen.currentChat.components.VideoPlayerPool
+import org.monogram.presentation.core.util.*
 import org.monogram.presentation.di.AppContainer
 import org.monogram.presentation.di.KoinAppContainer
 import org.monogram.presentation.di.uiModule
-import org.monogram.presentation.settingsScreens.storage.CacheController
-import org.monogram.presentation.util.*
+import org.monogram.presentation.features.chats.currentChat.components.ExoPlayerCache
+import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
+import org.monogram.presentation.settings.storage.CacheController
 import java.io.PrintWriter
 import java.io.StringWriter
 import kotlin.system.exitProcess
@@ -53,6 +54,8 @@ class App : Application(), SingletonImageLoader.Factory {
                 val pw = PrintWriter(sw)
                 throwable.printStackTrace(pw)
                 val stackTrace = sw.toString()
+
+                Log.d("CrashHandler", stackTrace)
 
                 val intent = Intent(this, CrashActivity::class.java).apply {
                     putExtra("EXTRA_CRASH_LOG", stackTrace)

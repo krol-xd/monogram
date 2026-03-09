@@ -7,44 +7,48 @@ import com.arkivanov.decompose.router.stack.*
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import org.monogram.domain.managers.PhoneManager
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.ProxyTypeModel
 import org.monogram.domain.repository.*
-import org.monogram.presentation.auth.DefaultAuthComponent
-import org.monogram.presentation.chatsScreen.chatList.DefaultChatListComponent
-import org.monogram.presentation.chatsScreen.chatList.DefaultNewChatComponent
-import org.monogram.presentation.chatsScreen.currentChat.DefaultChatComponent
-import org.monogram.presentation.chatsScreen.currentChat.components.VideoPlayerPool
-import org.monogram.presentation.chatsScreen.folders.DefaultFoldersComponent
-import org.monogram.presentation.profile.DefaultProfileComponent
-import org.monogram.presentation.profile.admin.*
-import org.monogram.presentation.profile.logs.DefaultProfileLogsComponent
-import org.monogram.presentation.settingsScreens.about.DefaultAboutComponent
-import org.monogram.presentation.settingsScreens.adblock.DefaultAdBlockComponent
-import org.monogram.presentation.settingsScreens.chatSettings.DefaultChatSettingsComponent
-import org.monogram.presentation.settingsScreens.dataStorage.DefaultDataStorageComponent
-import org.monogram.presentation.settingsScreens.debug.DefaultDebugComponent
-import org.monogram.presentation.settingsScreens.networkUsage.DefaultNetworkUsageComponent
-import org.monogram.presentation.settingsScreens.notifications.DefaultNotificationsComponent
-import org.monogram.presentation.settingsScreens.powersaving.DefaultPowerSavingComponent
-import org.monogram.presentation.settingsScreens.premium.DefaultPremiumComponent
-import org.monogram.presentation.settingsScreens.privacy.DefaultPasscodeComponent
-import org.monogram.presentation.settingsScreens.privacy.DefaultPrivacyComponent
-import org.monogram.presentation.settingsScreens.profile.DefaultEditProfileComponent
-import org.monogram.presentation.settingsScreens.proxy.DefaultProxyComponent
-import org.monogram.presentation.settingsScreens.sessions.DefaultSessionsComponent
-import org.monogram.presentation.settingsScreens.settings.DefaultSettingsComponent
-import org.monogram.presentation.settingsScreens.stickers.DefaultStickersComponent
-import org.monogram.presentation.settingsScreens.storage.DefaultStorageUsageComponent
-import org.monogram.presentation.stickers.core.toUi
-import org.monogram.presentation.util.AppPreferences
-import org.monogram.presentation.util.IDownloadUtils
-import org.monogram.presentation.util.componentScope
+import org.monogram.presentation.core.util.AppPreferences
+import org.monogram.presentation.core.util.IDownloadUtils
+import org.monogram.presentation.core.util.componentScope
+import org.monogram.presentation.features.auth.DefaultAuthComponent
+import org.monogram.presentation.features.chats.chatList.DefaultChatListComponent
+import org.monogram.presentation.features.chats.chatList.DefaultNewChatComponent
+import org.monogram.presentation.features.chats.currentChat.DefaultChatComponent
+import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
+import org.monogram.presentation.features.folders.DefaultFoldersComponent
+import org.monogram.presentation.features.profile.DefaultProfileComponent
+import org.monogram.presentation.features.profile.admin.*
+import org.monogram.presentation.features.profile.logs.DefaultProfileLogsComponent
+import org.monogram.presentation.features.stickers.core.toUi
+import org.monogram.presentation.features.webview.DefaultWebViewComponent
+import org.monogram.presentation.settings.about.DefaultAboutComponent
+import org.monogram.presentation.settings.adblock.DefaultAdBlockComponent
+import org.monogram.presentation.settings.chatSettings.DefaultChatSettingsComponent
+import org.monogram.presentation.settings.dataStorage.DefaultDataStorageComponent
+import org.monogram.presentation.settings.debug.DefaultDebugComponent
+import org.monogram.presentation.settings.networkUsage.DefaultNetworkUsageComponent
+import org.monogram.presentation.settings.notifications.DefaultNotificationsComponent
+import org.monogram.presentation.settings.powersaving.DefaultPowerSavingComponent
+import org.monogram.presentation.settings.premium.DefaultPremiumComponent
+import org.monogram.presentation.settings.privacy.DefaultPasscodeComponent
+import org.monogram.presentation.settings.privacy.DefaultPrivacyComponent
+import org.monogram.presentation.settings.profile.DefaultEditProfileComponent
+import org.monogram.presentation.settings.proxy.DefaultProxyComponent
+import org.monogram.presentation.settings.sessions.DefaultSessionsComponent
+import org.monogram.presentation.settings.settings.DefaultSettingsComponent
+import org.monogram.presentation.settings.stickers.DefaultStickersComponent
+import org.monogram.presentation.settings.storage.DefaultStorageUsageComponent
 
 class DefaultRootComponent(
     private val componentContext: AppComponentContext
@@ -291,6 +295,7 @@ class DefaultRootComponent(
             }
 
             is LinkAction.OpenWebApp -> openBrowser(action.url)
+            is LinkAction.OpenExternalLink -> openBrowser(action.url)
             is LinkAction.OpenActiveSessions -> navigation.bringToFront(Config.SessionsConfig)
             is LinkAction.ShowToast -> messageDisplayer.show(action.message)
             is LinkAction.AddProxy -> {
@@ -386,11 +391,7 @@ class DefaultRootComponent(
 
     private fun openBrowser(url: String) {
         if (!url.startsWith("http")) return
-        try {
-            externalNavigator.openUrl(url)
-        } catch (e: Exception) {
-            messageDisplayer.show("No browser found")
-        }
+        navigation.push(Config.WebView(url))
     }
 
     private fun navigateToChat(chatId: Long, messageId: Long? = null) {
@@ -578,7 +579,10 @@ class DefaultRootComponent(
             )
             is Config.AdminManage -> RootComponent.Child.AdminManageChild(
                 DefaultAdminManageComponent(
-                    context = context, chatId = config.chatId, userId = config.userId, onBackClicked = { navigation.pop() }
+                    context = context,
+                    chatId = config.chatId,
+                    userId = config.userId,
+                    onBackClicked = { navigation.pop() }
                 )
             )
             is Config.ChatEdit -> RootComponent.Child.ChatEditChild(
@@ -663,6 +667,14 @@ class DefaultRootComponent(
                     onBack = { navigation.pop() }
                 )
             )
+
+            is Config.WebView -> RootComponent.Child.WebViewChild(
+                DefaultWebViewComponent(
+                    context = context,
+                    url = config.url,
+                    onDismiss = { navigation.pop() }
+                )
+            )
         }
     }
 
@@ -701,5 +713,8 @@ class DefaultRootComponent(
         @Parcelize @Serializable object Stickers : Config()
         @Parcelize @Serializable object About : Config()
         @Parcelize @Serializable object Debug : Config()
+        @Parcelize
+        @Serializable
+        data class WebView(val url: String) : Config()
     }
 }

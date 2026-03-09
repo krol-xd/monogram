@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.oss.licenses)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -79,25 +80,24 @@ android {
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
-    implementation(libs.androidx.compose.material3.windowsizeclass)
-    implementation(libs.androidx.material.icons.extended.android)
-    implementation(libs.decompose)
-    implementation(libs.decompose.compose)
-    implementation(project(":domain"))
-    implementation(project(":presentation"))
-    implementation(project(":data"))
-    implementation(project(":core"))
-    implementation(libs.koin.android)
-    implementation(libs.koin.compose)
-    implementation(libs.androidx.activity.compose)
+    implementation(libs.bundles.androidx.compose)
+    
+    implementation(libs.bundles.decompose)
+    implementation(libs.bundles.koin)
+    
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
+    
     implementation(libs.androidx.biometric)
     implementation(libs.play.services.oss.licenses)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    implementation(project(":domain"))
+    implementation(project(":presentation"))
+    implementation(project(":data"))
+    implementation(project(":core"))
+
+    baselineProfile(project(":baselineprofile"))
 }
