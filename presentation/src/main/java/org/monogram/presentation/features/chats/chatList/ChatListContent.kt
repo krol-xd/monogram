@@ -117,7 +117,7 @@ fun ChatListContent(component: ChatListComponent) {
     }
 
     val density = LocalDensity.current
-    val tabsHeight = 56.dp
+    val tabsHeight = if (state.folders.size > 1) 56.dp else 10.dp
     val archiveItemHeight = 78.dp
     val tabsHeightPx = with(density) { tabsHeight.toPx() }
     val archiveItemHeightPx = with(density) { archiveItemHeight.toPx() }
@@ -186,7 +186,7 @@ fun ChatListContent(component: ChatListComponent) {
         }
     }
 
-    val nestedScrollConnection = remember(isArchivePersistent, canShowArchive, state.isArchiveAlwaysVisible) {
+    val nestedScrollConnection = remember(isArchivePersistent, canShowArchive, state.isArchiveAlwaysVisible, tabsHeightPx) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (source == NestedScrollSource.UserInput) {
