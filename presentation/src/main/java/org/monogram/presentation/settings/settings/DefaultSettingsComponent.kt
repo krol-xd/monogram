@@ -59,7 +59,8 @@ class DefaultSettingsComponent(
 
                 repository.getUserProfilePhotosFlow(me.id)
                     .onEach { photos ->
-                        val highResPhoto = photos.firstOrNull { !it.endsWith(".mp4", ignoreCase = true) }
+                        val highResPhoto = photos.firstOrNull { it.endsWith(".mp4", ignoreCase = true) }
+                            ?: photos.firstOrNull()
                         if (highResPhoto != null) {
                             _state.update { state ->
                                 state.copy(

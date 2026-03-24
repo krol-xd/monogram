@@ -307,6 +307,7 @@ fun ExceptionUserItem(
         ) {
             Avatar(
                 path = user.avatarPath,
+                fallbackPath = user.personalAvatarPath,
                 name = user.firstName.ifBlank { "D" },
                 size = 40.dp,
                 isOnline = user.userStatus == UserStatusType.ONLINE,
@@ -364,6 +365,7 @@ fun ExceptionChatItem(
         ) {
             Avatar(
                 path = chat.avatarPath,
+                fallbackPath = chat.personalAvatarPath,
                 name = chat.title.take(1),
                 size = 40.dp,
                 videoPlayerPool = videoPlayerPool

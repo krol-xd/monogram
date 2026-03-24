@@ -171,7 +171,13 @@ fun MemberListContent(component: MemberListComponent) {
                                 }
                             },
                             leadingContent = {
-                                Avatar(path = member.user.avatarPath, name = member.user.firstName, size = 48.dp, videoPlayerPool = component.videoPlayerPool)
+                                Avatar(
+                                    path = member.user.avatarPath,
+                                    fallbackPath = member.user.personalAvatarPath,
+                                    name = member.user.firstName,
+                                    size = 48.dp,
+                                    videoPlayerPool = component.videoPlayerPool
+                                )
                             },
                             trailingContent = {
                                 IconButton(onClick = { component.onMemberClick(member) }) {

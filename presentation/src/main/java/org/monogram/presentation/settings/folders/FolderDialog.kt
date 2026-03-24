@@ -190,7 +190,13 @@ fun FolderDialog(
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Avatar(path = chat.avatarPath, name = chat.title, size = 36.dp, videoPlayerPool = videoPlayerPool)
+                            Avatar(
+                                path = chat.avatarPath,
+                                fallbackPath = chat.personalAvatarPath,
+                                name = chat.title,
+                                size = 36.dp,
+                                videoPlayerPool = videoPlayerPool
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = chat.title,

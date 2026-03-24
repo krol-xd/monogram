@@ -51,6 +51,7 @@ fun UserProfileHeader(
             Box(modifier = Modifier.align(Alignment.Center)) {
                 AvatarHeader(
                     path = userModel.avatarPath,
+                    fallbackPath = userModel.personalAvatarPath,
                     name = "${userModel.firstName} ${userModel.lastName}",
                     size = avatarSize.coerceAtMost(headerHeight),
                     avatarCornerPercent = avatarCornerPercent,

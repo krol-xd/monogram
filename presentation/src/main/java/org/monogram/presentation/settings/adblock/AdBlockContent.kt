@@ -428,6 +428,7 @@ private fun WhitelistedChannelsBottomSheet(
                             leadingContent = {
                                 Avatar(
                                     path = channel.avatarPath,
+                                    fallbackPath = channel.personalAvatarPath,
                                     name = channel.title,
                                     videoPlayerPool = videoPlayerPool,
                                     size = 48.dp

@@ -329,7 +329,8 @@ private fun ExceptionActionsSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Avatar(
-                    path = chat.personalAvatarPath ?: chat.avatarPath,
+                    path = chat.avatarPath,
+                    fallbackPath = chat.personalAvatarPath,
                     name = chat.title,
                     size = 48.dp,
                     videoPlayerPool = videoPlayerPool
@@ -463,7 +464,8 @@ private fun ExceptionItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Avatar(
-                path = chat.personalAvatarPath ?: chat.avatarPath,
+                path = chat.avatarPath,
+                fallbackPath = chat.personalAvatarPath,
                 name = chat.title,
                 size = 44.dp,
                 videoPlayerPool = videoPlayerPool

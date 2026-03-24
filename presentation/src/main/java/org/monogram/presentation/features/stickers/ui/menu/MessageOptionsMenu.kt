@@ -734,7 +734,8 @@ private fun ViewerRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Avatar(
-            path = viewer.user.avatarPath ?: viewer.user.personalAvatarPath,
+            path = viewer.user.avatarPath,
+            fallbackPath = viewer.user.personalAvatarPath,
             name = fullName,
             size = 32.dp,
             videoPlayerPool = videoPlayerPool,

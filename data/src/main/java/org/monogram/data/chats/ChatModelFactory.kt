@@ -65,7 +65,7 @@ class ChatModelFactory(
                 cache.basicGroupFullInfoCache[type.basicGroupId]?.let { fullInfo ->
                     description = fullInfo.description
                     inviteLink = fullInfo.inviteLink?.inviteLink
-                    personalAvatarPath = resolvePhotoPath(fullInfo.photo?.sizes?.lastOrNull()?.photo, chat.id)
+                    personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
                 } ?: lazyLoad(cache.pendingBasicGroupFullInfo, type.basicGroupId) {
                     if (type.basicGroupId == 0L) return@lazyLoad
                     val result = gateway.execute(TdApi.GetBasicGroupFullInfo(type.basicGroupId))
@@ -97,7 +97,7 @@ class ChatModelFactory(
                 cache.supergroupFullInfoCache[type.supergroupId]?.let { fullInfo ->
                     description = fullInfo.description
                     inviteLink = fullInfo.inviteLink?.inviteLink
-                    personalAvatarPath = resolvePhotoPath(fullInfo.photo?.sizes?.lastOrNull()?.photo, chat.id)
+                    personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
                 } ?: lazyLoad(cache.pendingSupergroupFullInfo, type.supergroupId) {
                     if (type.supergroupId == 0L) return@lazyLoad
                     val result = gateway.execute(TdApi.GetSupergroupFullInfo(type.supergroupId))
@@ -123,7 +123,7 @@ class ChatModelFactory(
 
                 cache.userFullInfoCache[type.userId]?.let { fullInfo ->
                     description = fullInfo.bio?.text
-                    personalAvatarPath = resolvePhotoPath(fullInfo.photo?.sizes?.lastOrNull()?.photo, chat.id)
+                    personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
                 } ?: lazyLoad(cache.pendingUserFullInfo, type.userId) {
                     if (type.userId == 0L) return@lazyLoad
                     val result = gateway.execute(TdApi.GetUserFullInfo(type.userId))
@@ -235,6 +235,12 @@ class ChatModelFactory(
             fileManager.downloadFile(photoFile.id, 1, offset = 0, limit = 0, synchronous = true)
             null
         }
+    }
+
+    private fun resolvePhotoPath(chatPhoto: TdApi.ChatPhoto?, chatId: Long): String? {
+        if (chatPhoto == null) return null
+        return resolvePhotoPath(chatPhoto.animation?.file, chatId)
+            ?: resolvePhotoPath(chatPhoto.sizes.lastOrNull()?.photo, chatId)
     }
 
     private fun TdApi.Usernames.toDomain() = UsernamesModel(

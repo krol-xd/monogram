@@ -509,7 +509,8 @@ private fun ActiveAccountCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Avatar(
-                path = user?.personalAvatarPath ?: user?.avatarPath,
+                path = user?.avatarPath,
+                fallbackPath = user?.personalAvatarPath,
                 name = user?.firstName ?: "",
                 size = 56.dp,
                 fontSize = 20,

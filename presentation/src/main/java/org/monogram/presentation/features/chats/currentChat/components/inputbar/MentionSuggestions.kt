@@ -45,7 +45,8 @@ fun MentionSuggestions(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Avatar(
-                        path = user.personalAvatarPath ?: user.avatarPath,
+                        path = user.avatarPath,
+                        fallbackPath = user.personalAvatarPath,
                         name = user.firstName,
                         size = 36.dp,
                         isOnline = user.userStatus == UserStatusType.ONLINE,

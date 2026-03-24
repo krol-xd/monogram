@@ -736,7 +736,8 @@ fun ChatListContent(component: ChatListComponent) {
                                             ) {
                                                 Box(contentAlignment = Alignment.TopEnd) {
                                                     Avatar(
-                                                        path = chat.personalAvatarPath ?: chat.avatarPath,
+                                                        path = chat.avatarPath,
+                                                        fallbackPath = chat.personalAvatarPath,
                                                         name = chat.title,
                                                         size = 64.dp,
                                                         isOnline = chat.isOnline,

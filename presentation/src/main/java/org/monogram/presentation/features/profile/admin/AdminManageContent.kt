@@ -94,7 +94,13 @@ fun AdminManageContent(component: AdminManageComponent) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(16.dp)
                             ) {
-                                Avatar(path = user.avatarPath, name = user.firstName, size = 64.dp, videoPlayerPool = component.videoPlayerPool)
+                                Avatar(
+                                    path = user.avatarPath,
+                                    fallbackPath = user.personalAvatarPath,
+                                    name = user.firstName,
+                                    size = 64.dp,
+                                    videoPlayerPool = component.videoPlayerPool
+                                )
                                 Spacer(Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(

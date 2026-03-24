@@ -153,7 +153,8 @@ private fun ChatListItemAvatar(
                     }
                 } else {
                     AvatarForChat(
-                        path = chat.personalAvatarPath ?: chat.avatarPath,
+                        path = chat.avatarPath,
+                        fallbackPath = chat.personalAvatarPath,
                         name = chat.title,
                         size = 56.dp,
                         isOnline = chat.isOnline,

@@ -25,6 +25,7 @@ import java.io.File
 @Composable
 fun AvatarHeader(
     path: String?,
+    fallbackPath: String? = null,
     name: String,
     size: Dp,
     modifier: Modifier = Modifier,
@@ -37,16 +38,18 @@ fun AvatarHeader(
         .size(size)
         .clip(RoundedCornerShape(percent = avatarCornerPercent))
 
+    val resolvedPath = resolveAvatarPath(path, fallbackPath)
+
     Box(modifier = combinedModifier) {
-        val avatarFile = path?.let { File(it) }
+        val avatarFile = resolvedPath?.let { File(it) }
 
         if (avatarFile != null && avatarFile.exists()) {
-            val isVideo = path.endsWith(".mp4", ignoreCase = true)
+            val isVideo = resolvedPath.endsWith(".mp4", ignoreCase = true)
 
             when {
-                isVideo && avatarCornerPercent == 0 -> {
+                isVideo -> {
                     AvatarPlayer(
-                        path = path,
+                        path = resolvedPath,
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop,
                         videoPlayerPool = videoPlayerPool
@@ -77,4 +80,15 @@ fun AvatarHeader(
             )
         }
     }
+}
+
+private fun resolveAvatarPath(primaryPath: String?, fallbackPath: String?): String? {
+    val candidates = listOfNotNull(primaryPath?.takeIf { it.isNotBlank() }, fallbackPath?.takeIf { it.isNotBlank() })
+        .distinct()
+    if (candidates.isEmpty()) return null
+
+    val existingCandidates = candidates.filter { File(it).exists() }
+    val source = if (existingCandidates.isNotEmpty()) existingCandidates else candidates
+
+    return source.firstOrNull { it.endsWith(".mp4", ignoreCase = true) } ?: source.firstOrNull()
 }

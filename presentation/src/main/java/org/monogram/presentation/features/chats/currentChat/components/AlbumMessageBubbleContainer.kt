@@ -126,7 +126,8 @@ fun AlbumMessageBubbleContainer(
         ) {
             if (isGroup && !isOutgoing && !isChannel) {
                 Avatar(
-                    path = firstMsg.senderPersonalAvatar ?: firstMsg.senderAvatar,
+                    path = firstMsg.senderAvatar,
+                    fallbackPath = firstMsg.senderPersonalAvatar,
                     name = firstMsg.senderName,
                     size = 40.dp,
                     onClick = { toProfile(firstMsg.senderId) },

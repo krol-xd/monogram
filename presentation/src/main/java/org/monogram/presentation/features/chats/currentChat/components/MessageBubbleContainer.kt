@@ -223,7 +223,8 @@ private fun MessageAvatar(
     if (isGroup && !isOutgoing) {
         if (!isSameSenderBelow) {
             Avatar(
-                path = msg.senderPersonalAvatar ?: msg.senderAvatar,
+                path = msg.senderAvatar,
+                fallbackPath = msg.senderPersonalAvatar,
                 name = msg.senderName,
                 size = 40.dp,
                 isLocal = msg.senderAvatar?.contains("local") ?: false,

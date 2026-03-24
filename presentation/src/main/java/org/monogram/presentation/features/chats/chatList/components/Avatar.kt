@@ -26,6 +26,7 @@ import java.io.File
 @Composable
 fun AvatarTopAppBar(
     path: String?,
+    fallbackPath: String? = null,
     name: String,
     size: Dp,
     videoPlayerPool: VideoPlayerPool,
@@ -38,11 +39,12 @@ fun AvatarTopAppBar(
         .clip(CircleShape)
 
     Box(modifier = modifier.size(size)) {
-        val avatarFile = path?.let { File(it) }
+        val resolvedPath = resolveAvatarPath(path, fallbackPath)
+        val avatarFile = resolvedPath?.let { File(it) }
         if (avatarFile != null && avatarFile.exists()) {
-            if (path.endsWith(".mp4", ignoreCase = true)) {
+            if (resolvedPath.endsWith(".mp4", ignoreCase = true)) {
                 AvatarPlayer(
-                    path = path,
+                    path = resolvedPath,
                     modifier = combinedModifier,
                     contentScale = ContentScale.Crop,
                     videoPlayerPool = videoPlayerPool
@@ -79,4 +81,15 @@ fun AvatarTopAppBar(
             )
         }
     }
+}
+
+private fun resolveAvatarPath(primaryPath: String?, fallbackPath: String?): String? {
+    val candidates = listOfNotNull(primaryPath?.takeIf { it.isNotBlank() }, fallbackPath?.takeIf { it.isNotBlank() })
+        .distinct()
+    if (candidates.isEmpty()) return null
+
+    val existingCandidates = candidates.filter { File(it).exists() }
+    val source = if (existingCandidates.isNotEmpty()) existingCandidates else candidates
+
+    return source.firstOrNull { it.endsWith(".mp4", ignoreCase = true) } ?: source.firstOrNull()
 }

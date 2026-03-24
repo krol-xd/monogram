@@ -974,6 +974,7 @@ fun EditProfileContent(component: EditProfileComponent) {
                                 ) {
                                     Avatar(
                                         path = chat.avatarPath,
+                                        fallbackPath = chat.personalAvatarPath,
                                         name = chat.title,
                                         size = 40.dp,
                                         videoPlayerPool = component.videoPlayerPool

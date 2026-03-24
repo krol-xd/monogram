@@ -172,6 +172,7 @@ fun UserSelectionItem(
         leadingContent = {
             Avatar(
                 path = user.avatarPath,
+                fallbackPath = user.personalAvatarPath,
                 name = user.firstName.ifBlank { "D" },
                 size = 40.dp,
                 videoPlayerPool = videoPlayerPool

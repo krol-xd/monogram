@@ -416,7 +416,8 @@ private fun ContactItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Avatar(
-                path = user.personalAvatarPath ?: user.avatarPath,
+                path = user.avatarPath,
+                fallbackPath = user.personalAvatarPath,
                 name = user.firstName,
                 size = 40.dp,
                 isOnline = user.userStatus == UserStatusType.ONLINE && !isSupport,

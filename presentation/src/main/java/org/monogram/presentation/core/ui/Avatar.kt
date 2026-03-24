@@ -27,6 +27,7 @@ import java.io.File
 @Composable
 fun Avatar(
     path: String?,
+    fallbackPath: String? = null,
     name: String,
     size: Dp,
     videoPlayerPool: VideoPlayerPool,
@@ -41,6 +42,8 @@ fun Avatar(
         .clip(CircleShape)
         .clickable { onClick() }
 
+    val resolvedPath = resolveAvatarPath(path, fallbackPath)
+
     Box(modifier = modifier.size(size)) {
         val placeholder = @Composable {
             PlaceholderAvatar(
@@ -51,7 +54,7 @@ fun Avatar(
             )
         }
 
-        if (path != null) {
+        if (resolvedPath != null) {
             if (isLocal) {
                 AsyncImage(
                     model = R.raw.konata,
@@ -60,10 +63,10 @@ fun Avatar(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                val isVideo = remember(path) { path.endsWith(".mp4", ignoreCase = true) }
+                val isVideo = remember(resolvedPath) { resolvedPath.endsWith(".mp4", ignoreCase = true) }
                 if (isVideo) {
                     AvatarPlayer(
-                        path = path,
+                        path = resolvedPath,
                         modifier = combinedModifier,
                         contentScale = ContentScale.Crop,
                         videoPlayerPool = videoPlayerPool
@@ -72,7 +75,7 @@ fun Avatar(
                     Box(modifier = combinedModifier) {
                         placeholder()
                         AsyncImage(
-                            model = remember(path) { File(path) },
+                            model = remember(resolvedPath) { File(resolvedPath) },
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -102,6 +105,7 @@ fun Avatar(
 @Composable
 fun AvatarForChat(
     path: String?,
+    fallbackPath: String? = null,
     name: String,
     size: Dp,
     modifier: Modifier = Modifier,
@@ -114,6 +118,8 @@ fun AvatarForChat(
         .size(size)
         .clip(CircleShape)
 
+    val resolvedPath = resolveAvatarPath(path, fallbackPath)
+
     Box(modifier = modifier.size(size)) {
         val placeholder = @Composable {
             PlaceholderAvatar(
@@ -124,7 +130,7 @@ fun AvatarForChat(
             )
         }
 
-        if (path != null) {
+        if (resolvedPath != null) {
             if (isLocal) {
                 AsyncImage(
                     model = R.raw.konata,
@@ -133,10 +139,10 @@ fun AvatarForChat(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                val isVideo = remember(path) { path.endsWith(".mp4", ignoreCase = true) }
+                val isVideo = remember(resolvedPath) { resolvedPath.endsWith(".mp4", ignoreCase = true) }
                 if (isVideo) {
                     AvatarPlayer(
-                        path = path,
+                        path = resolvedPath,
                         modifier = combinedModifier,
                         contentScale = ContentScale.Crop,
                         videoPlayerPool = videoPlayerPool
@@ -145,7 +151,7 @@ fun AvatarForChat(
                     Box(modifier = combinedModifier) {
                         placeholder()
                         AsyncImage(
-                            model = remember(path) { File(path) },
+                            model = remember(resolvedPath) { File(resolvedPath) },
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -170,4 +176,15 @@ fun AvatarForChat(
             )
         }
     }
+}
+
+private fun resolveAvatarPath(primaryPath: String?, fallbackPath: String?): String? {
+    val candidates = listOfNotNull(primaryPath?.takeIf { it.isNotBlank() }, fallbackPath?.takeIf { it.isNotBlank() })
+        .distinct()
+    if (candidates.isEmpty()) return null
+
+    val existingCandidates = candidates.filter { File(it).exists() }
+    val source = if (existingCandidates.isNotEmpty()) existingCandidates else candidates
+
+    return source.firstOrNull { it.endsWith(".mp4", ignoreCase = true) } ?: source.firstOrNull()
 }

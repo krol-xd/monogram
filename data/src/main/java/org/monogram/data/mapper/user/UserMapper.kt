@@ -16,9 +16,10 @@ fun TdApi.User.toDomain(
     val emojiStatusId = this.getEmojiStatusId()
     val username = usernames?.activeUsernames?.firstOrNull()
 
-    val personalAvatarPath = fullInfo
-        ?.personalPhoto?.sizes?.lastOrNull()?.photo
-        ?.local?.path?.ifEmpty { null }
+    val personalAvatarPath = fullInfo?.personalPhoto?.let { personalPhoto ->
+        personalPhoto.animation?.file?.local?.path?.ifEmpty { null }
+            ?: personalPhoto.sizes.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+    }
 
     val lastSeen = (status as? TdApi.UserStatusOffline)
         ?.wasOnline?.toLong()?.times(1000L) ?: 0L

@@ -341,6 +341,7 @@ private fun LazyGridScope.membersList(
                 leadingContent = {
                     Avatar(
                         path = user.avatarPath,
+                        fallbackPath = user.personalAvatarPath,
                         name = user.firstName,
                         isOnline = user.userStatus == UserStatusType.ONLINE,
                         size = 40.dp,

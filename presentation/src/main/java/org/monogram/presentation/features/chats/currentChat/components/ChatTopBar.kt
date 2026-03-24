@@ -130,7 +130,8 @@ fun ChatTopBar(
                                     )
                                 } else {
                                     AvatarForChat(
-                                        path = personalAvatarPath ?: avatarPath,
+                                        path = avatarPath,
+                                        fallbackPath = personalAvatarPath,
                                         name = title,
                                         size = 40.dp,
                                         isOnline = isOnline,

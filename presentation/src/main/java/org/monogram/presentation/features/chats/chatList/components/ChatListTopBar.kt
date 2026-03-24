@@ -179,7 +179,8 @@ fun ChatListTopBar(
                         modifier = Modifier.size(40.dp).semantics { contentDescription = "Settings" }
                     ) {
                         AvatarTopAppBar(
-                            path = user?.personalAvatarPath ?: user?.avatarPath,
+                            path = user?.avatarPath,
+                            fallbackPath = user?.personalAvatarPath,
                             name = user?.firstName ?: "",
                             size = 36.dp,
                             videoPlayerPool = videoPlayerPool

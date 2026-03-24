@@ -44,6 +44,7 @@ fun LinkedChatItem(
         ) {
             Avatar(
                 path = chat.avatarPath,
+                fallbackPath = chat.personalAvatarPath,
                 name = chat.title,
                 size = 64.dp,
                 modifier = Modifier.clip(CircleShape),

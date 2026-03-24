@@ -47,7 +47,8 @@ fun MessageSearchItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Avatar(
-            path = message.senderPersonalAvatar ?: message.senderAvatar,
+            path = message.senderAvatar,
+            fallbackPath = message.senderPersonalAvatar,
             name = message.senderName,
             size = 48.dp,
             videoPlayerPool = videoPlayerPool

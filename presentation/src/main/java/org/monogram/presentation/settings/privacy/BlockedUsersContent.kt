@@ -213,7 +213,8 @@ fun BlockedUserItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Avatar(
-                path = user.personalAvatarPath ?: user.avatarPath,
+                path = user.avatarPath,
+                fallbackPath = user.personalAvatarPath,
                 name = user.firstName.ifBlank { "D" },
                 size = 40.dp,
                 videoPlayerPool = videoPlayerPool
