@@ -21,6 +21,7 @@ class LinkHandlerRepositoryImpl(
         val normalized = normalizeLink(link)
 
         tryParseProxyLink(normalized)?.let { return it }
+        tryParseUserLink(normalized)?.let { return it }
 
         return runCatching {
             when (val result = gateway.execute(TdApi.GetInternalLinkType(normalized))) {
@@ -39,7 +40,7 @@ class LinkHandlerRepositoryImpl(
                 }
 
                 is TdApi.InternalLinkTypeSettings ->
-                    LinkAction.OpenSettings(LinkAction.SettingsType.MAIN)
+                    LinkAction.OpenSettings(result.section.toDomain())
 
                 is TdApi.InternalLinkTypeStickerSet ->
                     LinkAction.OpenStickerSet(result.stickerSetName)
@@ -70,6 +71,37 @@ class LinkHandlerRepositoryImpl(
                 is TdApi.InternalLinkTypeBotStart ->
                     handlePublicChat(result.botUsername)
 
+                is TdApi.InternalLinkTypeBotStartInGroup ->
+                    handlePublicChat(result.botUsername)
+
+                is TdApi.InternalLinkTypeVideoChat ->
+                    handlePublicChat(result.chatUsername)
+
+                is TdApi.InternalLinkTypeStory ->
+                    handlePublicChat(result.storyPosterUsername)
+
+                is TdApi.InternalLinkTypeStoryAlbum ->
+                    handlePublicChat(result.storyAlbumOwnerUsername)
+
+                is TdApi.InternalLinkTypeMyProfilePage ->
+                    handleMyProfileLink()
+
+                is TdApi.InternalLinkTypeSavedMessages ->
+                    handleSavedMessagesLink()
+
+                is TdApi.InternalLinkTypeUserPhoneNumber ->
+                    handleUserPhoneNumberLink(result.phoneNumber, result.openProfile)
+
+                is TdApi.InternalLinkTypeUserToken ->
+                    handleUserTokenLink(result.token)
+
+                is TdApi.InternalLinkTypePremiumFeaturesPage,
+                is TdApi.InternalLinkTypePremiumGiftCode,
+                is TdApi.InternalLinkTypePremiumGiftPurchase,
+                is TdApi.InternalLinkTypeStarPurchase,
+                is TdApi.InternalLinkTypeRestorePurchases ->
+                    LinkAction.OpenSettings(LinkAction.SettingsType.PREMIUM)
+
                 is TdApi.InternalLinkTypeWebApp ->
                     LinkAction.OpenWebApp(0L, result.webAppShortName)
 
@@ -81,7 +113,7 @@ class LinkHandlerRepositoryImpl(
                 }
 
                 is TdApi.InternalLinkTypeUnknownDeepLink ->
-                    LinkAction.ShowToast("Unknown link type")
+                    handleExternalOrUnknownLink(result.link)
 
                 else -> handleExternalOrUnknownLink(normalized)
             }
@@ -102,6 +134,45 @@ class LinkHandlerRepositoryImpl(
         return resolveChatAction(chat)
     }
 
+    private suspend fun handleMyProfileLink(): LinkAction {
+        val me = runCatching { gateway.execute(TdApi.GetMe()) }.getOrNull()
+            ?: return LinkAction.ShowToast("User not found")
+        return LinkAction.OpenUser(me.id)
+    }
+
+    private suspend fun handleSavedMessagesLink(): LinkAction {
+        val me = runCatching { gateway.execute(TdApi.GetMe()) }.getOrNull()
+            ?: return LinkAction.ShowToast("Chat not found")
+        val chat = runCatching {
+            gateway.execute(TdApi.CreatePrivateChat(me.id, false))
+        }.getOrNull() ?: return LinkAction.ShowToast("Chat not found")
+        return LinkAction.OpenChat(chat.id)
+    }
+
+    private suspend fun handleUserPhoneNumberLink(phoneNumber: String, openProfile: Boolean): LinkAction {
+        val user = runCatching {
+            gateway.execute(TdApi.SearchUserByPhoneNumber(phoneNumber, true))
+        }.getOrNull() ?: return LinkAction.ShowToast("User not found")
+
+        if (openProfile) return LinkAction.OpenUser(user.id)
+
+        val chat = runCatching {
+            gateway.execute(TdApi.CreatePrivateChat(user.id, false))
+        }.getOrNull()
+        return if (chat != null) LinkAction.OpenChat(chat.id) else LinkAction.OpenUser(user.id)
+    }
+
+    private suspend fun handleUserTokenLink(token: String): LinkAction {
+        val user = runCatching {
+            gateway.execute(TdApi.SearchUserByToken(token))
+        }.getOrNull() ?: return LinkAction.ShowToast("User not found")
+
+        val chat = runCatching {
+            gateway.execute(TdApi.CreatePrivateChat(user.id, false))
+        }.getOrNull()
+        return if (chat != null) LinkAction.OpenChat(chat.id) else LinkAction.OpenUser(user.id)
+    }
+
     private suspend fun resolveChatAction(chat: TdApi.Chat): LinkAction {
         val needsConfirm = chat.type is TdApi.ChatTypeSupergroup && chat.positions.isEmpty()
         if (!needsConfirm) return LinkAction.OpenChat(chat.id)
@@ -116,27 +187,55 @@ class LinkHandlerRepositoryImpl(
     }
 
     private suspend fun handleExternalOrUnknownLink(link: String): LinkAction {
-        if (link.startsWith("https://t.me/") || link.startsWith("tg://resolve?domain=")) {
-            val username = link
-                .removePrefix("https://t.me/")
-                .removePrefix("tg://resolve?domain=")
-                .split("/")
-                .firstOrNull()
-                ?.takeIf { it.isNotBlank() && !it.contains("?") }
-                ?: return LinkAction.None
+        val uri = runCatching { link.toUri() }.getOrNull()
 
-            val chat = runCatching {
-                gateway.execute(TdApi.SearchPublicChat(username))
-            }.getOrNull() ?: return LinkAction.None
+        if (uri != null && uri.scheme.equals("tg", ignoreCase = true)) {
+            if (uri.host.equals("resolve", ignoreCase = true)) {
+                uri.getQueryParameter("user_id")?.toLongOrNull()?.let { return LinkAction.OpenUser(it) }
 
-            return resolveChatAction(chat)
+                uri.getQueryParameter("phone")?.takeIf { it.isNotBlank() }?.let {
+                    return handleUserPhoneNumberLink(it, openProfile = false)
+                }
+
+                val username = uri.getQueryParameter("domain")?.takeIf { it.isNotBlank() }
+                if (username != null) {
+                    val hasMessageTarget = uri.getQueryParameter("post") != null ||
+                            uri.getQueryParameter("thread") != null ||
+                            uri.getQueryParameter("comment") != null
+                    if (!hasMessageTarget) {
+                        return handlePublicChat(username)
+                    }
+                }
+            }
+
+            return LinkAction.None
         }
 
-        return if (link.startsWith("http://") || link.startsWith("https://")) {
-            LinkAction.OpenExternalLink(link)
-        } else {
-            LinkAction.None
+        if (uri != null && (uri.scheme.equals("https", ignoreCase = true) || uri.scheme.equals("http", ignoreCase = true))) {
+            val host = uri.host?.lowercase()
+            val pathSegments = uri.pathSegments.orEmpty()
+
+            if (host == "t.me" || host == "www.t.me" || host == "telegram.me" || host == "www.telegram.me") {
+                val first = pathSegments.firstOrNull()
+                val second = pathSegments.getOrNull(1)
+
+                if (!first.isNullOrBlank()) {
+                    if (first == "joinchat" && !second.isNullOrBlank()) {
+                        return LinkAction.JoinChat("https://t.me/joinchat/$second")
+                    }
+
+                    if (first.startsWith("+")) {
+                        return LinkAction.JoinChat("https://t.me/$first")
+                    }
+
+                    if (pathSegments.size == 1) {
+                        return handlePublicChat(first)
+                    }
+                }
+            }
         }
+
+        return if (link.startsWith("http://") || link.startsWith("https://")) LinkAction.OpenExternalLink(link) else LinkAction.None
     }
 
     private fun normalizeLink(link: String): String = when {
@@ -167,6 +266,35 @@ class LinkHandlerRepositoryImpl(
             else -> ProxyTypeModel.Socks5(user ?: "", pass ?: "")
         }
         return LinkAction.AddProxy(server, port, type)
+    }
+
+    private fun tryParseUserLink(link: String): LinkAction? {
+        val uri = runCatching { link.toUri() }.getOrNull() ?: return null
+        if (!uri.scheme.equals("tg", ignoreCase = true)) return null
+
+        val userId = when {
+            uri.host.equals("user", ignoreCase = true) ->
+                uri.getQueryParameter("id")?.toLongOrNull()
+
+            uri.host.equals("openmessage", ignoreCase = true) ->
+                uri.getQueryParameter("user_id")?.toLongOrNull()
+
+            else -> null
+        } ?: return null
+
+        return LinkAction.OpenUser(userId)
+    }
+
+    private fun TdApi.SettingsSection?.toDomain(): LinkAction.SettingsType = when (this) {
+        is TdApi.SettingsSectionPrivacyAndSecurity -> LinkAction.SettingsType.PRIVACY
+        is TdApi.SettingsSectionDevices -> LinkAction.SettingsType.SESSIONS
+        is TdApi.SettingsSectionChatFolders -> LinkAction.SettingsType.FOLDERS
+        is TdApi.SettingsSectionAppearance,
+        is TdApi.SettingsSectionNotifications -> LinkAction.SettingsType.CHAT
+        is TdApi.SettingsSectionDataAndStorage -> LinkAction.SettingsType.DATA_STORAGE
+        is TdApi.SettingsSectionPowerSaving -> LinkAction.SettingsType.POWER_SAVING
+        is TdApi.SettingsSectionPremium -> LinkAction.SettingsType.PREMIUM
+        else -> LinkAction.SettingsType.MAIN
     }
 
     private fun TdApi.ProxyType?.toDomain(): ProxyTypeModel? = when (this) {
