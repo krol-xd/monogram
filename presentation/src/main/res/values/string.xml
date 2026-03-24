@@ -734,6 +734,7 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">Who can add me to %1$s?</string>
+    <string name="privacy_who_can_see_my_phone_number">Who can see my phone number?</string>
     <string name="privacy_who_can_find_me_by_number">Who can find me by my number?</string>
     <string name="privacy_phone_number_search_help">Users who add your number to their contacts will see it on Telegram
         only if they are allowed to by the setting above.
@@ -751,7 +752,7 @@
     </string>
     <string name="privacy_unblock_action">Unblock</string>
     <string name="privacy_block_user_cd">Block User</string>
-    <string name="privacy_search_users_placeholder">Search users (ID for now)</string>
+    <string name="privacy_search_users_placeholder">Search users</string>
     <string name="privacy_no_users_found">No users found</string>
 
     <!-- Passcode -->

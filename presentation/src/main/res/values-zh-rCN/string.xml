@@ -702,6 +702,7 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">谁可以将我添加到 %1$s？</string>
+    <string name="privacy_who_can_see_my_phone_number">谁可以看到我的手机号码？</string>
     <string name="privacy_who_can_find_me_by_number">谁可以通过我的电话号码找到我？</string>
     <string name="privacy_phone_number_search_help">只有当上述设置允许时，将您的号码添加到联系人的用户才能在 Telegram 上看到它。</string>
     <string name="privacy_add_exceptions">添加例外</string>
@@ -715,7 +716,7 @@
     <string name="privacy_blocked_users_help">黑名单中的用户将无法联系您，也无法看到您的最近上线时间。</string>
     <string name="privacy_unblock_action">解除屏蔽</string>
     <string name="privacy_block_user_cd">屏蔽用户</string>
-    <string name="privacy_search_users_placeholder">搜索用户（目前通过 ID）</string>
+    <string name="privacy_search_users_placeholder">搜索用户</string>
     <string name="privacy_no_users_found">未找到用户</string>
 
     <!-- Passcode -->

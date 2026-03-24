@@ -5,7 +5,6 @@ import com.arkivanov.decompose.value.Value
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import org.monogram.domain.models.PrivacyRule
 import org.monogram.domain.repository.PrivacyKey
 import org.monogram.domain.repository.PrivacyRepository
 import org.monogram.presentation.core.util.componentScope
@@ -96,11 +95,10 @@ class DefaultPrivacyComponent(
 
     private suspend fun updatePrivacyRule(key: PrivacyKey, userId: Long, isAllow: Boolean) {
         val rules = privacyRepository.getPrivacyRules(key).first()
-        val newRules = rules.toMutableList()
+        val config = rules.toPrivacyRuleConfig()
 
-        val allowUsers = newRules.filterIsInstance<PrivacyRule.AllowUsers>().flatMap { it.userIds }.toMutableList()
-        val disallowUsers =
-            newRules.filterIsInstance<PrivacyRule.DisallowUsers>().flatMap { it.userIds }.toMutableList()
+        val allowUsers = config.allowUsers.toMutableList()
+        val disallowUsers = config.disallowUsers.toMutableList()
 
         if (isAllow) {
             if (!allowUsers.contains(userId)) {
@@ -114,21 +112,17 @@ class DefaultPrivacyComponent(
             }
         }
 
-        val finalRules = mutableListOf<PrivacyRule>()
-        if (allowUsers.isNotEmpty()) finalRules.add(PrivacyRule.AllowUsers(allowUsers))
-        if (disallowUsers.isNotEmpty()) finalRules.add(PrivacyRule.DisallowUsers(disallowUsers))
-
-        val baseRule = rules.firstOrNull { it !is PrivacyRule.AllowUsers && it !is PrivacyRule.DisallowUsers }
-        if (baseRule != null) {
-            finalRules.add(baseRule)
-            if (baseRule is PrivacyRule.AllowContacts) {
-                finalRules.add(PrivacyRule.AllowNone)
-            }
-        } else {
-            finalRules.add(PrivacyRule.AllowAll)
-        }
-
-        privacyRepository.setPrivacyRule(key, finalRules)
+        privacyRepository.setPrivacyRule(
+            key,
+            buildPrivacyRules(
+                key = key,
+                value = config.baseValue,
+                allowUsers = allowUsers,
+                disallowUsers = disallowUsers,
+                allowChats = config.allowChats,
+                disallowChats = config.disallowChats
+            )
+        )
     }
 
     @Serializable

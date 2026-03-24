@@ -363,7 +363,11 @@ private fun Int.toTtlString(): String {
         548 -> stringResource(R.string.ttl_18_months)
         720 -> stringResource(R.string.ttl_2_years)
         730 -> stringResource(R.string.ttl_2_years)
-        else -> if (this % 30 == 0) "${this / 30} months" else "$this days"
+        else -> if (this % 30 == 0) {
+            stringResource(R.string.ttl_months_format, this / 30)
+        } else {
+            stringResource(R.string.ttl_days_format, this)
+        }
     }
 }
 

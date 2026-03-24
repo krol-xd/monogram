@@ -146,15 +146,6 @@ class DefaultPrivacyListComponent(
             .launchIn(scope)
     }
 
-    private fun List<PrivacyRule>.toPrivacyValue(): PrivacyValue {
-        return when {
-            any { it is PrivacyRule.AllowAll } -> PrivacyValue.EVERYBODY
-            any { it is PrivacyRule.AllowContacts } -> PrivacyValue.MY_CONTACTS
-            any { it is PrivacyRule.AllowNone } -> PrivacyValue.NOBODY
-            else -> PrivacyValue.EVERYBODY
-        }
-    }
-
     override fun onBackClicked() {
         onBack()
     }

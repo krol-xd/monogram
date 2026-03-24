@@ -706,6 +706,7 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">Хто може додавати мене в групи?</string>
+    <string name="privacy_who_can_see_my_phone_number">Хто може бачити мій номер телефону?</string>
     <string name="privacy_who_can_find_me_by_number">Хто може знайти мене за номером?</string>
     <string name="privacy_phone_number_search_help">Користувачі, які зберегли Ваш номер, побачать його в Telegram, тільки якщо це дозволено налаштуванням вище.</string>
     <string name="privacy_add_exceptions">Додати винятки</string>
@@ -719,7 +720,7 @@
     <string name="privacy_blocked_users_help">Заблоковані користувачі не зможуть Вам писати та бачити Вашу мережеву активність.</string>
     <string name="privacy_unblock_action">Розблокувати</string>
     <string name="privacy_block_user_cd">Заблокувати</string>
-    <string name="privacy_search_users_placeholder">Пошук користувачів (за ID)</string>
+    <string name="privacy_search_users_placeholder">Пошук користувачів</string>
     <string name="privacy_no_users_found">Користувачів не знайдено</string>
 
     <!-- Passcode -->

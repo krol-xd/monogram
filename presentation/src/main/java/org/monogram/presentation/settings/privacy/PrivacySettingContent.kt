@@ -78,10 +78,14 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
         ) {
             item {
                 SectionHeader(
-                    stringResource(
-                        R.string.privacy_who_can_add_me,
-                        stringResource(state.titleRes).lowercase()
-                    )
+                    if (state.privacyKey == PrivacyKey.PHONE_NUMBER) {
+                        stringResource(R.string.privacy_who_can_see_my_phone_number)
+                    } else {
+                        stringResource(
+                            R.string.privacy_who_can_add_me,
+                            stringResource(state.titleRes).lowercase()
+                        )
+                    }
                 )
                 PrivacyOption(
                     title = stringResource(R.string.privacy_everybody),

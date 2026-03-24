@@ -3,6 +3,7 @@ package org.monogram.presentation.settings.privacy.userSelection
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,6 +26,24 @@ class DefaultUserSelectionComponent(
     private val scope = componentScope
     private var searchJob: Job? = null
 
+    init {
+        loadContacts()
+    }
+
+    private fun loadContacts() {
+        scope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                val contacts = userRepository.getContacts()
+                _state.update { it.copy(users = contacts) }
+            } catch (_: Exception) {
+                _state.update { it.copy(users = emptyList()) }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
     override fun onBackClicked() {
         onBack()
     }
@@ -34,7 +53,7 @@ class DefaultUserSelectionComponent(
         searchJob?.cancel()
 
         if (query.isBlank()) {
-            _state.update { it.copy(users = emptyList()) }
+            loadContacts()
             return
         }
 
@@ -42,18 +61,20 @@ class DefaultUserSelectionComponent(
             delay(500) // Debounce
             _state.update { it.copy(isLoading = true) }
             try {
-                val userId = query.toLongOrNull()
-                if (userId != null) {
-                    val user = userRepository.getUser(userId)
-                    if (user != null) {
-                        _state.update { it.copy(users = listOf(user)) }
-                    } else {
-                        _state.update { it.copy(users = emptyList()) }
-                    }
-                } else {
-                    // TODO: Implement proper search in UserRepository
-                    _state.update { it.copy(users = emptyList()) }
+                val contactsDeferred = async { userRepository.searchContacts(query) }
+                val directUserDeferred = async {
+                    query.toLongOrNull()?.let { userRepository.getUser(it) }
                 }
+
+                val results = LinkedHashMap<Long, org.monogram.domain.models.UserModel>()
+                contactsDeferred.await().forEach { user ->
+                    results[user.id] = user
+                }
+                directUserDeferred.await()?.let { user ->
+                    results[user.id] = user
+                }
+
+                _state.update { it.copy(users = results.values.toList()) }
             } catch (e: Exception) {
                 _state.update { it.copy(users = emptyList()) }
             } finally {
