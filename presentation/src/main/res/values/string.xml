@@ -734,6 +734,12 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">Who can add me to %1$s?</string>
+    <string name="privacy_who_can_call_me">Who can call me?</string>
+    <string name="privacy_who_can_see_my_last_seen">Who can see my last seen time?</string>
+    <string name="privacy_who_can_see_my_profile_photos">Who can see my profile photos?</string>
+    <string name="privacy_who_can_see_my_bio">Who can see my bio?</string>
+    <string name="privacy_who_can_link_my_account_in_forwarded_messages">Who can add a link to my account when forwarding my messages?</string>
+    <string name="privacy_who_can_add_me_to_groups_and_channels">Who can add me to groups and channels?</string>
     <string name="privacy_who_can_see_my_phone_number">Who can see my phone number?</string>
     <string name="privacy_who_can_find_me_by_number">Who can find me by my number?</string>
     <string name="privacy_phone_number_search_help">Users who add your number to their contacts will see it on Telegram

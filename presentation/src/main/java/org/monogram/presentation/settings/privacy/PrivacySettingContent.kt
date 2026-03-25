@@ -41,6 +41,18 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
 
     val greenColor = Color(0xFF34A853)
     val redColor = Color(0xFFFF3B30)
+    val isPhoneNumberPrivacy = state.privacyKey == PrivacyKey.PHONE_NUMBER
+    val isPhoneNumberSearchPrivacy = state.privacyKey == PrivacyKey.PHONE_NUMBER_SEARCH
+    val mainSectionTitle = when (state.privacyKey) {
+        PrivacyKey.PHONE_NUMBER -> stringResource(R.string.privacy_who_can_see_my_phone_number)
+        PrivacyKey.PHONE_NUMBER_SEARCH -> stringResource(R.string.privacy_who_can_find_me_by_number)
+        PrivacyKey.LAST_SEEN -> stringResource(R.string.privacy_who_can_see_my_last_seen)
+        PrivacyKey.PROFILE_PHOTO -> stringResource(R.string.privacy_who_can_see_my_profile_photos)
+        PrivacyKey.BIO -> stringResource(R.string.privacy_who_can_see_my_bio)
+        PrivacyKey.FORWARDED_MESSAGES -> stringResource(R.string.privacy_who_can_link_my_account_in_forwarded_messages)
+        PrivacyKey.CALLS -> stringResource(R.string.privacy_who_can_call_me)
+        PrivacyKey.GROUPS_AND_CHANNELS -> stringResource(R.string.privacy_who_can_add_me_to_groups_and_channels)
+    }
 
     Scaffold(
         topBar = {
@@ -77,16 +89,7 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SectionHeader(
-                    if (state.privacyKey == PrivacyKey.PHONE_NUMBER) {
-                        stringResource(R.string.privacy_who_can_see_my_phone_number)
-                    } else {
-                        stringResource(
-                            R.string.privacy_who_can_add_me,
-                            stringResource(state.titleRes).lowercase()
-                        )
-                    }
-                )
+                SectionHeader(mainSectionTitle)
                 PrivacyOption(
                     title = stringResource(R.string.privacy_everybody),
                     selected = state.selectedValue == PrivacyValue.EVERYBODY,
@@ -96,18 +99,21 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
                 PrivacyOption(
                     title = stringResource(R.string.privacy_my_contacts),
                     selected = state.selectedValue == PrivacyValue.MY_CONTACTS,
-                    position = ItemPosition.MIDDLE,
+                    position = if (isPhoneNumberSearchPrivacy) ItemPosition.BOTTOM else ItemPosition.MIDDLE,
                     onClick = { component.onPrivacyValueChanged(PrivacyValue.MY_CONTACTS) }
                 )
-                PrivacyOption(
-                    title = stringResource(R.string.privacy_nobody),
-                    selected = state.selectedValue == PrivacyValue.NOBODY,
-                    position = ItemPosition.BOTTOM,
-                    onClick = { component.onPrivacyValueChanged(PrivacyValue.NOBODY) }
-                )
+
+                if (!isPhoneNumberSearchPrivacy) {
+                    PrivacyOption(
+                        title = stringResource(R.string.privacy_nobody),
+                        selected = state.selectedValue == PrivacyValue.NOBODY,
+                        position = ItemPosition.BOTTOM,
+                        onClick = { component.onPrivacyValueChanged(PrivacyValue.NOBODY) }
+                    )
+                }
             }
 
-            if (state.privacyKey == PrivacyKey.PHONE_NUMBER) {
+            if (isPhoneNumberPrivacy) {
                 item {
                     SectionHeader(stringResource(R.string.privacy_who_can_find_me_by_number))
                     PrivacyOption(
@@ -131,43 +137,45 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
                 }
             }
 
-            item {
-                SectionHeader(stringResource(R.string.privacy_add_exceptions))
-                val showAlways = state.selectedValue != PrivacyValue.EVERYBODY
-                val showNever = state.selectedValue != PrivacyValue.NOBODY
+            if (!isPhoneNumberSearchPrivacy) {
+                item {
+                    SectionHeader(stringResource(R.string.privacy_add_exceptions))
+                    val showAlways = state.selectedValue != PrivacyValue.EVERYBODY
+                    val showNever = state.selectedValue != PrivacyValue.NOBODY
 
-                if (showAlways) {
-                    val total = state.allowUsers.size + state.allowChats.size
-                    SettingsTile(
-                        icon = Icons.Rounded.Add,
-                        title = stringResource(R.string.privacy_always_allow),
-                        subtitle = if (total > 0) stringResource(
-                            R.string.privacy_exceptions_count_format,
-                            total
-                        ) else null,
-                        iconColor = greenColor,
-                        position = if (showNever) ItemPosition.TOP else ItemPosition.STANDALONE,
-                        onClick = { component.onAddExceptionClicked(true) }
-                    )
-                }
+                    if (showAlways) {
+                        val total = state.allowUsers.size + state.allowChats.size
+                        SettingsTile(
+                            icon = Icons.Rounded.Add,
+                            title = stringResource(R.string.privacy_always_allow),
+                            subtitle = if (total > 0) stringResource(
+                                R.string.privacy_exceptions_count_format,
+                                total
+                            ) else null,
+                            iconColor = greenColor,
+                            position = if (showNever) ItemPosition.TOP else ItemPosition.STANDALONE,
+                            onClick = { component.onAddExceptionClicked(true) }
+                        )
+                    }
 
-                if (showNever) {
-                    val total = state.disallowUsers.size + state.disallowChats.size
-                    SettingsTile(
-                        icon = Icons.Rounded.RemoveCircle,
-                        title = stringResource(R.string.privacy_never_allow),
-                        subtitle = if (total > 0) stringResource(
-                            R.string.privacy_exceptions_count_format,
-                            total
-                        ) else null,
-                        iconColor = redColor,
-                        position = if (showAlways) ItemPosition.BOTTOM else ItemPosition.STANDALONE,
-                        onClick = { component.onAddExceptionClicked(false) }
-                    )
+                    if (showNever) {
+                        val total = state.disallowUsers.size + state.disallowChats.size
+                        SettingsTile(
+                            icon = Icons.Rounded.RemoveCircle,
+                            title = stringResource(R.string.privacy_never_allow),
+                            subtitle = if (total > 0) stringResource(
+                                R.string.privacy_exceptions_count_format,
+                                total
+                            ) else null,
+                            iconColor = redColor,
+                            position = if (showAlways) ItemPosition.BOTTOM else ItemPosition.STANDALONE,
+                            onClick = { component.onAddExceptionClicked(false) }
+                        )
+                    }
                 }
             }
 
-            if (state.allowUsers.isNotEmpty() || state.allowChats.isNotEmpty()) {
+            if (!isPhoneNumberSearchPrivacy && (state.allowUsers.isNotEmpty() || state.allowChats.isNotEmpty())) {
                 item {
                     SectionHeader(stringResource(R.string.privacy_always_allow))
                     val totalItems = state.allowUsers.size + state.allowChats.size
@@ -207,7 +215,7 @@ fun PrivacySettingContent(component: PrivacySettingComponent) {
                 }
             }
 
-            if (state.disallowUsers.isNotEmpty() || state.disallowChats.isNotEmpty()) {
+            if (!isPhoneNumberSearchPrivacy && (state.disallowUsers.isNotEmpty() || state.disallowChats.isNotEmpty())) {
                 item {
                     SectionHeader(stringResource(R.string.privacy_never_allow))
                     val totalItems = state.disallowUsers.size + state.disallowChats.size

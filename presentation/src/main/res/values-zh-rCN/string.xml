@@ -702,6 +702,12 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">谁可以将我添加到 %1$s？</string>
+    <string name="privacy_who_can_call_me">谁可以给我打电话？</string>
+    <string name="privacy_who_can_see_my_last_seen">谁可以看到我的最后上线时间？</string>
+    <string name="privacy_who_can_see_my_profile_photos">谁可以看到我的个人头像？</string>
+    <string name="privacy_who_can_see_my_bio">谁可以看到我的个人简介？</string>
+    <string name="privacy_who_can_link_my_account_in_forwarded_messages">谁可以在转发我的消息时添加帐号链接？</string>
+    <string name="privacy_who_can_add_me_to_groups_and_channels">谁可以将我添加到群组和频道？</string>
     <string name="privacy_who_can_see_my_phone_number">谁可以看到我的手机号码？</string>
     <string name="privacy_who_can_find_me_by_number">谁可以通过我的电话号码找到我？</string>
     <string name="privacy_phone_number_search_help">只有当上述设置允许时，将您的号码添加到联系人的用户才能在 Telegram 上看到它。</string>

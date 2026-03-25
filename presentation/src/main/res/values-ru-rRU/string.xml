@@ -706,6 +706,12 @@
 
     <!-- Privacy Setting -->
     <string name="privacy_who_can_add_me">Кто может добавлять меня в группы?</string>
+    <string name="privacy_who_can_call_me">Кто может мне звонить?</string>
+    <string name="privacy_who_can_see_my_last_seen">Кто видит время моего последнего входа?</string>
+    <string name="privacy_who_can_see_my_profile_photos">Кто видит мои фотографии профиля?</string>
+    <string name="privacy_who_can_see_my_bio">Кто видит сведения «О себе»?</string>
+    <string name="privacy_who_can_link_my_account_in_forwarded_messages">Кто может ссылаться на мой аккаунт при пересылке моих сообщений?</string>
+    <string name="privacy_who_can_add_me_to_groups_and_channels">Кто может добавлять меня в группы и каналы?</string>
     <string name="privacy_who_can_see_my_phone_number">Кто может видеть мой номер телефона?</string>
     <string name="privacy_who_can_find_me_by_number">Кто может найти меня по номеру?</string>
     <string name="privacy_phone_number_search_help">Пользователи, сохранившие Ваш номер, увидят его в Telegram, только если это разрешено настройкой выше.</string>
