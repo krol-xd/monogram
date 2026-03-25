@@ -141,6 +141,13 @@ class TdUserRemoteDataSource(
         gateway.execute(TdApi.SetUsername(username))
     }
 
+    override suspend fun setEmojiStatus(customEmojiId: Long?) {
+        val status = customEmojiId?.let {
+            TdApi.EmojiStatus(TdApi.EmojiStatusTypeCustomEmoji(it), 0)
+        }
+        gateway.execute(TdApi.SetEmojiStatus(status))
+    }
+
     override suspend fun setProfilePhoto(path: String) {
         gateway.execute(
             TdApi.SetProfilePhoto(TdApi.InputChatPhotoStatic(TdApi.InputFileLocal(path)), true)

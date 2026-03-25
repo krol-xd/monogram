@@ -440,6 +440,9 @@ class UserRepositoryImpl(
     override suspend fun setUsername(username: String) =
         remote.setUsername(username)
 
+    override suspend fun setEmojiStatus(customEmojiId: Long?) =
+        remote.setEmojiStatus(customEmojiId)
+
     override suspend fun setProfilePhoto(path: String) =
         remote.setProfilePhoto(path)
 

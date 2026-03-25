@@ -312,6 +312,24 @@ class DefaultChatListComponent(
         }
     }
 
+    override fun onSetEmojiStatus(customEmojiId: Long, statusPath: String?) {
+        _state.update { state ->
+            val user = state.currentUser ?: return@update state
+            state.copy(
+                currentUser = user.copy(
+                    statusEmojiId = customEmojiId,
+                    statusEmojiPath = statusPath ?: user.statusEmojiPath
+                )
+            )
+        }
+
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                repositoryUser.setEmojiStatus(customEmojiId)
+            }
+        }
+    }
+
     override fun onClearSearchHistory() {
         repository.clearSearchHistory()
     }

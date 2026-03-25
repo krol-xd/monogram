@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -61,6 +64,7 @@ import org.monogram.presentation.features.chats.ChatListComponent
 import org.monogram.presentation.features.chats.chatList.components.*
 import org.monogram.presentation.features.chats.currentChat.components.chats.getEmojiFontFamily
 import org.monogram.presentation.features.instantview.InstantViewer
+import org.monogram.presentation.features.stickers.ui.menu.EmojisGrid
 import org.monogram.presentation.features.webapp.MiniAppViewer
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -74,6 +78,7 @@ fun ChatListContent(component: ChatListComponent) {
     val haptic = LocalHapticFeedback.current
 
     var showAccountMenu by remember { mutableStateOf(false) }
+    var showStatusMenu by remember { mutableStateOf(false) }
 
     val isPermissionRequested by component.appPreferences.isPermissionRequested.collectAsState()
     var showPermissionRequest by remember { mutableStateOf(!isPermissionRequested) }
@@ -81,10 +86,15 @@ fun ChatListContent(component: ChatListComponent) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isTablet = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
-    val isCustomBackHandlingEnabled = state.isSearchActive || state.selectedChatIds.isNotEmpty() || state.selectedFolderId == -2 || state.isForwarding || state.instantViewUrl != null || state.webAppUrl != null || state.webViewUrl != null
+    val isCustomBackHandlingEnabled =
+        state.isSearchActive || state.selectedChatIds.isNotEmpty() || state.selectedFolderId == -2 || state.isForwarding || state.instantViewUrl != null || state.webAppUrl != null || state.webViewUrl != null || showStatusMenu
 
     BackHandler(enabled = isCustomBackHandlingEnabled) {
-        component.handleBack()
+        if (showStatusMenu) {
+            showStatusMenu = false
+        } else {
+            component.handleBack()
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -385,6 +395,54 @@ fun ChatListContent(component: ChatListComponent) {
         )
     }
 
+    if (showStatusMenu) {
+        Popup(
+            onDismissRequest = { showStatusMenu = false },
+            properties = PopupProperties(focusable = true)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { showStatusMenu = false }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 56.dp)
+                        .heightIn(max = 520.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .align(Alignment.TopCenter)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    EmojisGrid(
+                        onEmojiSelected = { _, sticker ->
+                            val customEmojiId = sticker?.customEmojiId
+                            if (sticker != null && customEmojiId != null) {
+                                if (!sticker.path.isNullOrBlank()) {
+                                    cachedStatusEmojiPath = sticker.path
+                                }
+                                component.onSetEmojiStatus(customEmojiId, sticker.path)
+                                showStatusMenu = false
+                            }
+                        },
+                        contentPadding = PaddingValues(bottom = 12.dp)
+                    )
+                }
+            }
+        }
+    }
+
     if (showPermissionRequest) {
         PermissionRequestSheet(onDismiss = {
             showPermissionRequest = false
@@ -489,6 +547,7 @@ fun ChatListContent(component: ChatListComponent) {
                                 searchQuery = state.searchQuery,
                                 onSearchQueryChange = component::onSearchQueryChange,
                                 onSearchToggle = component::onSearchToggle,
+                                onStatusClick = { showStatusMenu = true },
                                 onMenuClick = { showAccountMenu = true },
                                 videoPlayerPool = component.videoPlayerPool
                             )

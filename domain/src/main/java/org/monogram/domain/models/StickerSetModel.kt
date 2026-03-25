@@ -40,6 +40,7 @@ enum class StickerFormat {
 @Serializable
 data class StickerModel(
     val id: Long,
+    val customEmojiId: Long? = null,
     val width: Int,
     val height: Int,
     val emoji: String,

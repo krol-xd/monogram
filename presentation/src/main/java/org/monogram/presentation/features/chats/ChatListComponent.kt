@@ -23,6 +23,7 @@ interface ChatListComponent {
     fun retryConnection()
     fun onSearchToggle()
     fun onSearchQueryChange(query: String)
+    fun onSetEmojiStatus(customEmojiId: Long, statusPath: String?)
     fun onClearSearchHistory()
     fun onRemoveSearchHistoryItem(chatId: Long)
     fun onMuteSelected(mute: Boolean)

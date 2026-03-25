@@ -44,6 +44,7 @@ interface UserRepository {
     suspend fun setName(firstName: String, lastName: String)
     suspend fun setBio(bio: String)
     suspend fun setUsername(username: String)
+    suspend fun setEmojiStatus(customEmojiId: Long?)
     suspend fun setProfilePhoto(path: String)
     suspend fun setBirthdate(birthdate: BirthdateModel?)
     suspend fun setPersonalChat(chatId: Long)

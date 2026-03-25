@@ -138,7 +138,12 @@ class StickerRepositoryImpl(
 
     private suspend fun loadCustomEmojiStickerSets(force: Boolean) = customEmojiMutex.withLock {
         val now = System.currentTimeMillis()
-        if (!force && customEmojiStickerSets.value.isNotEmpty()) return@withLock
+        if (!force && customEmojiStickerSets.value.isNotEmpty()) {
+            val hasMissingCustomEmojiIds = customEmojiStickerSets.value.any { set ->
+                set.stickerType == StickerType.CUSTOM_EMOJI && set.stickers.any { it.customEmojiId == null }
+            }
+            if (!hasMissingCustomEmojiIds) return@withLock
+        }
         if (force && customEmojiStickerSets.value.isNotEmpty() && now - lastCustomEmojiLoadTime < 1000) return@withLock
 
         val sets = remote.getInstalledStickerSets(StickerType.CUSTOM_EMOJI)

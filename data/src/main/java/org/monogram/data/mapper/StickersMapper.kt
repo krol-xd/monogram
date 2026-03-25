@@ -8,6 +8,7 @@ import org.monogram.domain.models.StickerType
 
 fun TdApi.Sticker.toDomain(): StickerModel = StickerModel(
     id = sticker.id.toLong(),
+    customEmojiId = (fullType as? TdApi.StickerFullTypeCustomEmoji)?.customEmojiId,
     width = width,
     height = height,
     emoji = emoji,

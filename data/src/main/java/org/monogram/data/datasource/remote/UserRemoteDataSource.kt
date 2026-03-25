@@ -35,6 +35,7 @@ interface UserRemoteDataSource {
     suspend fun setName(firstName: String, lastName: String)
     suspend fun setBio(bio: String)
     suspend fun setUsername(username: String)
+    suspend fun setEmojiStatus(customEmojiId: Long?)
     suspend fun setProfilePhoto(path: String)
     suspend fun setBirthdate(birthdate: TdApi.Birthdate?)
     suspend fun setPersonalChat(chatId: Long)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shield
@@ -40,6 +41,7 @@ fun ChatListTopBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSearchToggle: () -> Unit,
+    onStatusClick: () -> Unit,
     onMenuClick: () -> Unit
 ) {
     AnimatedContent(
@@ -111,11 +113,23 @@ fun ChatListTopBar(
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        if (user?.statusEmojiPath != null) {
+                        if (!user?.statusEmojiPath.isNullOrBlank()) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            StickerImage(
-                                path = user.statusEmojiPath,
-                                modifier = Modifier.size(28.dp),
+                            Box(modifier = Modifier.clickable(onClick = onStatusClick)) {
+                                StickerImage(
+                                    path = user.statusEmojiPath,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                            }
+                        } else if (user?.isPremium == true) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = stringResource(R.string.telegram_premium_title),
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clickable(onClick = onStatusClick),
+                                tint = Color(0xFF31A6FD)
                             )
                         }
                     }
@@ -176,7 +190,9 @@ fun ChatListTopBar(
 
                     IconButton(
                         onClick = onMenuClick,
-                        modifier = Modifier.size(40.dp).semantics { contentDescription = "Settings" }
+                        modifier = Modifier
+                            .size(40.dp)
+                            .semantics { contentDescription = "Settings" }
                     ) {
                         AvatarTopAppBar(
                             path = user?.avatarPath,
