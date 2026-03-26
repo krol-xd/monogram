@@ -66,6 +66,7 @@ fun MessageBubbleContainer(
     shouldReportPosition: Boolean = false,
     onPositionChange: (Long, Offset, IntSize) -> Unit = { _, _, _ -> },
     toProfile: (Long) -> Unit,
+    onViaBotClick: (String) -> Unit = {},
     canReply: Boolean = true,
     onReplySwipe: (MessageModel) -> Unit = {},
     swipeEnabled: Boolean = true,
@@ -205,6 +206,13 @@ fun MessageBubbleContainer(
                 MessageReplyMarkup(
                     msg = msg,
                     onReplyMarkupButtonClick = onReplyMarkupButtonClick
+                )
+
+                MessageViaBotAttribution(
+                    msg = msg,
+                    isOutgoing = isOutgoing,
+                    onViaBotClick = onViaBotClick,
+                    modifier = Modifier.align(if (isOutgoing) Alignment.End else Alignment.Start)
                 )
             }
         }

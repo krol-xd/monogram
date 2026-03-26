@@ -251,6 +251,7 @@ interface ChatComponent {
         val restrictUserId: Long? = null,
         val inlineBotResults: InlineBotResultsModel? = null,
         val currentInlineBotId: Long? = null,
+        val currentInlineBotUsername: String? = null,
         val currentInlineQuery: String? = null,
         val isInlineBotLoading: Boolean = false,
         val isInstalledFromGooglePlay: Boolean = true,

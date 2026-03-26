@@ -1,10 +1,8 @@
 package org.monogram.presentation.features.chats.currentChat.impl
 
 import android.util.Log
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import org.monogram.domain.models.*
 import org.monogram.domain.repository.ChatMembersFilter
 import org.monogram.presentation.features.chats.currentChat.DefaultChatComponent
@@ -63,29 +61,93 @@ internal fun DefaultChatComponent.handleMentionQueryChange(
 }
 
 internal fun DefaultChatComponent.handleInlineQueryChange(botUsername: String, query: String) {
+    val normalizedUsername = botUsername.trim().removePrefix("@").lowercase()
+    if (normalizedUsername.isBlank()) {
+        clearInlineBotState()
+        return
+    }
+
+    val normalizedQuery = query
+    if (normalizedQuery.isBlank()) {
+        clearInlineBotState()
+        return
+    }
+
+    val state = _state.value
+    if (
+        state.currentInlineBotUsername == normalizedUsername &&
+        state.currentInlineQuery == normalizedQuery &&
+        (state.inlineBotResults != null || state.isInlineBotLoading)
+    ) {
+        return
+    }
+
     inlineBotJob?.cancel()
     inlineBotJob = scope.launch {
-        delay(400)
-        _state.update { it.copy(isInlineBotLoading = true) }
+        delay(300)
+        val currentState = _state.value
+        val cachedBotId = if (currentState.currentInlineBotUsername == normalizedUsername) {
+            currentState.currentInlineBotId
+        } else {
+            null
+        }
+
+        _state.update {
+            it.copy(
+                inlineBotResults = if (it.currentInlineBotUsername == normalizedUsername) it.inlineBotResults else null,
+                currentInlineBotId = cachedBotId,
+                currentInlineBotUsername = normalizedUsername,
+                currentInlineQuery = normalizedQuery,
+                isInlineBotLoading = true
+            )
+        }
+
         try {
-            val bot = userRepository.searchPublicChat(botUsername)
-            if (bot != null) {
-                val results = repositoryMessage.getInlineBotResults(bot.id, chatId, query)
-                _state.update { it.copy(
-                    inlineBotResults = results,
-                    currentInlineBotId = bot.id,
-                    currentInlineQuery = query
-                ) }
+            val botId = cachedBotId ?: userRepository.searchPublicChat(normalizedUsername)
+                ?.id
+
+            if (!isActive) return@launch
+
+            if (botId == null) {
+                clearInlineBotState()
+                return@launch
             }
+
+            val results = repositoryMessage.getInlineBotResults(botId, chatId, normalizedQuery)
+            if (!isActive) return@launch
+
+            _state.update { liveState ->
+                if (liveState.currentInlineBotUsername != normalizedUsername || liveState.currentInlineQuery != normalizedQuery) {
+                    liveState
+                } else {
+                    liveState.copy(
+                        inlineBotResults = results,
+                        currentInlineBotId = botId
+                    )
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("DefaultChatComponent", "Failed to fetch inline bot results", e)
+            clearInlineBotState()
         } finally {
-            _state.update { it.copy(isInlineBotLoading = false) }
+            if (isActive) {
+                _state.update { liveState ->
+                    if (liveState.currentInlineBotUsername == normalizedUsername && liveState.currentInlineQuery == normalizedQuery) {
+                        liveState.copy(isInlineBotLoading = false)
+                    } else {
+                        liveState
+                    }
+                }
+            }
         }
     }
 }
 
 internal fun DefaultChatComponent.handleLoadMoreInlineResults(offset: String) {
+    if (offset.isBlank() || _state.value.isInlineBotLoading) return
+
     val botId = _state.value.currentInlineBotId ?: return
     val query = _state.value.currentInlineQuery ?: return
 
@@ -94,22 +156,40 @@ internal fun DefaultChatComponent.handleLoadMoreInlineResults(offset: String) {
         _state.update { it.copy(isInlineBotLoading = true) }
         try {
             val results = repositoryMessage.getInlineBotResults(botId, chatId, query, offset)
+            if (!isActive) return@launch
+
             if (results != null) {
                 _state.update { currentState ->
                     val currentResults = currentState.inlineBotResults
-                    if (currentResults != null) {
+                    if (
+                        currentResults != null &&
+                        currentState.currentInlineBotId == botId &&
+                        currentState.currentInlineQuery == query
+                    ) {
+                        val mergedResults = (currentResults.results + results.results)
+                            .distinctBy { "${it.type}:${it.id}" }
+
                         currentState.copy(
-                            inlineBotResults = results.copy(results = currentResults.results + results.results)
+                            inlineBotResults = currentResults.copy(
+                                nextOffset = results.nextOffset,
+                                results = mergedResults,
+                                switchPmText = results.switchPmText ?: currentResults.switchPmText,
+                                switchPmParameter = results.switchPmParameter ?: currentResults.switchPmParameter
+                            )
                         )
                     } else {
                         currentState.copy(inlineBotResults = results)
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("DefaultChatComponent", "Failed to load more inline bot results", e)
         } finally {
-            _state.update { it.copy(isInlineBotLoading = false) }
+            if (isActive) {
+                _state.update { it.copy(isInlineBotLoading = false) }
+            }
         }
     }
 }
@@ -117,20 +197,52 @@ internal fun DefaultChatComponent.handleLoadMoreInlineResults(offset: String) {
 internal fun DefaultChatComponent.handleSendInlineResult(resultId: String) {
     val results = _state.value.inlineBotResults ?: return
     scope.launch {
-        repositoryMessage.sendInlineBotResult(
-            chatId = chatId,
-            queryId = results.queryId,
-            resultId = resultId,
-            replyToMsgId = _state.value.replyMessage?.id,
-            threadId = _state.value.currentTopicId
+        try {
+            repositoryMessage.sendInlineBotResult(
+                chatId = chatId,
+                queryId = results.queryId,
+                resultId = resultId,
+                replyToMsgId = _state.value.replyMessage?.id,
+                threadId = _state.value.currentTopicId
+            )
+        } catch (e: Exception) {
+            Log.e("DefaultChatComponent", "Failed to send inline bot result", e)
+            return@launch
+        }
+
+        _state.update {
+            it.copy(
+                inlineBotResults = null,
+                currentInlineBotId = null,
+                currentInlineBotUsername = null,
+                currentInlineQuery = null,
+                replyMessage = null
+            )
+        }
+    }
+}
+
+private fun DefaultChatComponent.clearInlineBotState() {
+    val currentState = _state.value
+    if (
+        currentState.inlineBotResults == null &&
+        currentState.currentInlineBotId == null &&
+        currentState.currentInlineBotUsername == null &&
+        currentState.currentInlineQuery == null &&
+        !currentState.isInlineBotLoading
+    ) {
+        return
+    }
+
+    _state.update {
+        it.copy(
+            inlineBotResults = null,
+            currentInlineBotId = null,
+            currentInlineBotUsername = null,
+            currentInlineQuery = null,
+            isInlineBotLoading = false
         )
     }
-    _state.update { it.copy(
-        inlineBotResults = null,
-        currentInlineBotId = null,
-        currentInlineQuery = null,
-        replyMessage = null
-    ) }
 }
 
 internal fun DefaultChatComponent.handleReplyMarkupButtonClick(

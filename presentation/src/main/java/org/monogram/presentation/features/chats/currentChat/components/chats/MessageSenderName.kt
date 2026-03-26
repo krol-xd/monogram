@@ -24,8 +24,6 @@ fun MessageSenderName(
     modifier: Modifier = Modifier,
     toProfile: (Long) -> Unit = {}
 ) {
-    val linkHandler = LocalLinkHandler.current
-
     Row(
         modifier = modifier.padding(bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -55,27 +53,7 @@ fun MessageSenderName(
             )
         }
 
-        // 3. Via Bot Info
-        if (msg.viaBotUserId != 0L && msg.viaBotName != null) {
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "via",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "@${msg.viaBotName}",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                ),
-                maxLines = 1,
-                modifier = Modifier.clickable { linkHandler("tg://user?id=${msg.viaBotUserId}") }
-            )
-        }
-
-        // 4. Custom Title
+        // 3. Custom Title
         if (!msg.senderCustomTitle.isNullOrEmpty()) {
             Spacer(modifier = Modifier.width(6.dp))
 

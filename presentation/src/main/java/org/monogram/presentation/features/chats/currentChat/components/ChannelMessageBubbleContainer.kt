@@ -27,6 +27,7 @@ import org.monogram.presentation.core.util.IDownloadUtils
 import org.monogram.presentation.features.chats.currentChat.chatContent.shouldShowDate
 import org.monogram.presentation.features.chats.currentChat.components.channels.*
 import org.monogram.presentation.features.chats.currentChat.components.chats.DocumentMessageBubble
+import org.monogram.presentation.features.chats.currentChat.components.chats.MessageViaBotAttribution
 import org.monogram.presentation.features.chats.currentChat.components.chats.ReplyMarkupView
 
 @Composable
@@ -57,6 +58,7 @@ fun ChannelMessageBubbleContainer(
     onCommentsClick: (Long) -> Unit = {},
     showComments: Boolean = true,
     toProfile: (Long) -> Unit = {},
+    onViaBotClick: (String) -> Unit = {},
     downloadUtils: IDownloadUtils,
     videoPlayerPool: VideoPlayerPool
 ) {
@@ -262,6 +264,13 @@ fun ChannelMessageBubbleContainer(
                         onButtonClick = { onReplyMarkupButtonClick(msg.id, it) }
                     )
                 }
+
+                MessageViaBotAttribution(
+                    msg = msg,
+                    isOutgoing = msg.isOutgoing,
+                    onViaBotClick = onViaBotClick,
+                    modifier = Modifier.align(Alignment.Start)
+                )
             }
             Spacer(modifier = Modifier.width(12.dp))
         }

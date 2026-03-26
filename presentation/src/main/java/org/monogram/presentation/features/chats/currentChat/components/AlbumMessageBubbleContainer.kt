@@ -24,6 +24,7 @@ import org.monogram.presentation.core.util.IDownloadUtils
 import org.monogram.presentation.features.chats.currentChat.chatContent.shouldShowDate
 import org.monogram.presentation.features.chats.currentChat.components.channels.ChannelAlbumMessageBubble
 import org.monogram.presentation.features.chats.currentChat.components.chats.ChatAlbumMessageBubble
+import org.monogram.presentation.features.chats.currentChat.components.chats.MessageViaBotAttribution
 import org.monogram.presentation.features.chats.currentChat.components.chats.ReplyMarkupView
 
 @Composable
@@ -54,6 +55,7 @@ fun AlbumMessageBubbleContainer(
     onCommentsClick: (Long) -> Unit = {},
     showComments: Boolean = true,
     toProfile: (Long) -> Unit,
+    onViaBotClick: (String) -> Unit = {},
     canReply: Boolean = false,
     onReplySwipe: (MessageModel) -> Unit = {},
     swipeEnabled: Boolean = true,
@@ -232,6 +234,13 @@ fun AlbumMessageBubbleContainer(
                         onButtonClick = { onReplyMarkupButtonClick(lastMsg.id, it) }
                     )
                 }
+
+                MessageViaBotAttribution(
+                    msg = lastMsg,
+                    isOutgoing = isOutgoing,
+                    onViaBotClick = onViaBotClick,
+                    modifier = Modifier.align(if (isOutgoing) Alignment.End else Alignment.Start)
+                )
             }
         }
     }

@@ -602,12 +602,20 @@ class MessageRepositoryImpl(
                             }
                         }
 
+                        val photoResult = res as? TdApi.InlineQueryResultPhoto
+                        val selectedPhotoSize = photoResult
+                            ?.photo
+                            ?.sizes
+                            ?.sortedBy { it.width * it.height }
+                            ?.lastOrNull { size -> maxOf(size.width, size.height) <= 960 }
+                            ?: photoResult?.photo?.sizes?.lastOrNull()
+
                         InlineQueryResultModel(
                             id = when (res) {
                                 is TdApi.InlineQueryResultArticle -> res.id
                                 is TdApi.InlineQueryResultPhoto -> res.id
                                 is TdApi.InlineQueryResultVideo -> res.id
-                                is TdApi.InlineQueryResultAudio -> res.audio.title
+                                is TdApi.InlineQueryResultAudio -> res.id
                                 is TdApi.InlineQueryResultDocument -> res.id
                                 is TdApi.InlineQueryResultLocation -> res.id
                                 is TdApi.InlineQueryResultVenue -> res.id
@@ -618,7 +626,21 @@ class MessageRepositoryImpl(
                                 is TdApi.InlineQueryResultContact -> res.id
                                 else -> ""
                             },
-                            type = res.javaClass.simpleName,
+                            type = when (res) {
+                                is TdApi.InlineQueryResultArticle -> "article"
+                                is TdApi.InlineQueryResultPhoto -> "photo"
+                                is TdApi.InlineQueryResultVideo -> "video"
+                                is TdApi.InlineQueryResultAudio -> "audio"
+                                is TdApi.InlineQueryResultDocument -> "document"
+                                is TdApi.InlineQueryResultLocation -> "location"
+                                is TdApi.InlineQueryResultVenue -> "venue"
+                                is TdApi.InlineQueryResultGame -> "game"
+                                is TdApi.InlineQueryResultAnimation -> "gif"
+                                is TdApi.InlineQueryResultSticker -> "sticker"
+                                is TdApi.InlineQueryResultVoiceNote -> "voice"
+                                is TdApi.InlineQueryResultContact -> "contact"
+                                else -> res.javaClass.simpleName
+                            },
                             title = when (res) {
                                 is TdApi.InlineQueryResultArticle -> res.title
                                 is TdApi.InlineQueryResultPhoto -> res.title
@@ -639,7 +661,7 @@ class MessageRepositoryImpl(
                             },
                             thumbFileId = when (res) {
                                 is TdApi.InlineQueryResultArticle -> getThumbFileId(res.thumbnail)
-                                is TdApi.InlineQueryResultPhoto -> res.photo.sizes.lastOrNull()?.photo?.id ?: 0
+                                is TdApi.InlineQueryResultPhoto -> selectedPhotoSize?.photo?.id ?: 0
                                 is TdApi.InlineQueryResultVideo -> getThumbFileId(res.video.thumbnail)
                                 is TdApi.InlineQueryResultDocument -> getThumbFileId(res.document.thumbnail)
                                 is TdApi.InlineQueryResultAnimation -> getThumbFileId(res.animation.thumbnail)
@@ -650,8 +672,7 @@ class MessageRepositoryImpl(
                                 is TdApi.InlineQueryResultArticle -> getPath(res.thumbnail)
                                 is TdApi.InlineQueryResultPhoto -> {
                                     val photo = res.photo
-                                    val bestSize = photo.sizes.lastOrNull()
-                                    val path = bestSize?.photo?.let { file ->
+                                    val path = selectedPhotoSize?.photo?.let { file ->
                                         val updated = cache.fileCache[file.id] ?: file
                                         if (updated.local.path.isNotEmpty()) {
                                             updated.local.path
@@ -664,14 +685,20 @@ class MessageRepositoryImpl(
                                     }
                                     path ?: makePath(photo.minithumbnail)
                                 }
-                                is TdApi.InlineQueryResultVideo -> getPath(res.video.thumbnail)
-                                is TdApi.InlineQueryResultDocument -> getPath(res.document.thumbnail)
-                                is TdApi.InlineQueryResultAnimation -> getPath(res.animation.thumbnail)
+
+                                is TdApi.InlineQueryResultVideo ->
+                                    getPath(res.video.thumbnail) ?: makePath(res.video.minithumbnail)
+
+                                is TdApi.InlineQueryResultDocument ->
+                                    getPath(res.document.thumbnail) ?: makePath(res.document.minithumbnail)
+
+                                is TdApi.InlineQueryResultAnimation ->
+                                    getPath(res.animation.thumbnail) ?: makePath(res.animation.minithumbnail)
                                 is TdApi.InlineQueryResultSticker -> getPath(res.sticker.thumbnail)
                                 else -> null
                             },
                             width = when (res) {
-                                is TdApi.InlineQueryResultPhoto -> res.photo.sizes.lastOrNull()?.width
+                                is TdApi.InlineQueryResultPhoto -> selectedPhotoSize?.width
                                     ?: res.photo.minithumbnail?.width ?: 0
                                 is TdApi.InlineQueryResultVideo -> res.video.width
                                 is TdApi.InlineQueryResultAnimation -> res.animation.width
@@ -679,7 +706,7 @@ class MessageRepositoryImpl(
                                 else -> 0
                             },
                             height = when (res) {
-                                is TdApi.InlineQueryResultPhoto -> res.photo.sizes.lastOrNull()?.height
+                                is TdApi.InlineQueryResultPhoto -> selectedPhotoSize?.height
                                     ?: res.photo.minithumbnail?.height ?: 0
                                 is TdApi.InlineQueryResultVideo -> res.video.height
                                 is TdApi.InlineQueryResultAnimation -> res.animation.height
@@ -707,19 +734,23 @@ class MessageRepositoryImpl(
             TdApi.InputMessageReplyToMessage(replyToMsgId, null, 0)
         else null
 
-        threadId?.let {
-            gateway.execute(
-                TdApi.SendInlineQueryResultMessage(
-                    chatId,
-                    TdApi.MessageTopicForum(it.toInt()),
-                    replyTo,
-                    null,
-                    queryId,
-                    resultId,
-                    false
-                )
-            )
+        val topicId = if (threadId != null) {
+            TdApi.MessageTopicForum(threadId.toInt())
+        } else {
+            null
         }
+
+        gateway.execute(
+            TdApi.SendInlineQueryResultMessage(
+                chatId,
+                topicId,
+                replyTo,
+                null,
+                queryId,
+                resultId,
+                false
+            )
+        )
     }
 
     override suspend fun getChatEventLog(

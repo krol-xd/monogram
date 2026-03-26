@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
@@ -30,8 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import java.io.File
-import java.io.FileOutputStream
 import org.monogram.domain.models.*
 import org.monogram.domain.repository.InlineBotResultsModel
 import org.monogram.domain.repository.StickerRepository
@@ -43,6 +40,8 @@ import org.monogram.presentation.features.chats.currentChat.components.chats.get
 import org.monogram.presentation.features.chats.currentChat.components.inputbar.*
 import org.monogram.presentation.features.gallery.GalleryScreen
 import org.monogram.presentation.features.stickers.ui.menu.StickerEmojiMenu
+import java.io.File
+import java.io.FileOutputStream
 
 @Immutable
 data class ChatInputBarState(
@@ -60,6 +59,8 @@ data class ChatInputBarState(
     val replyMarkup: ReplyMarkupModel? = null,
     val mentionSuggestions: List<UserModel> = emptyList(),
     val inlineBotResults: InlineBotResultsModel? = null,
+    val currentInlineBotUsername: String? = null,
+    val currentInlineQuery: String? = null,
     val isInlineBotLoading: Boolean = false,
     val attachBots: List<AttachMenuBotModel> = emptyList(),
 )
@@ -88,6 +89,7 @@ data class ChatInputBarActions(
     val onInlineQueryChange: (String, String) -> Unit = { _, _ -> },
     val onLoadMoreInlineResults: (String) -> Unit = {},
     val onSendInlineResult: (String) -> Unit = {},
+    val onInlineSwitchPm: (String, String) -> Unit = { _, _ -> },
     val onAttachBotClick: (AttachMenuBotModel) -> Unit = {},
     val onGalleryClick: () -> Unit = {},
 )
@@ -183,21 +185,30 @@ fun ChatInputBar(
     }
 
     val currentOnInlineQueryChange by rememberUpdatedState(actions.onInlineQueryChange)
-    LaunchedEffect(textValue.text) {
-        val text = textValue.text
-        if (text.startsWith("@") && text.contains(" ")) {
-            val parts = text.split(" ", limit = 2)
-            val botUsername = parts[0].substring(1)
-            val query = parts[1]
-            if (botUsername.isNotEmpty()) {
-                currentOnInlineQueryChange(botUsername, query)
-            }
+    LaunchedEffect(textValue.text, textValue.selection) {
+        val inlineQuery = parseInlineQueryInput(
+            text = textValue.text,
+            selection = textValue.selection
+        )
+
+        if (inlineQuery != null) {
+            currentOnInlineQueryChange(inlineQuery.botUsername, inlineQuery.query)
+        } else {
+            currentOnInlineQueryChange("", "")
         }
     }
 
     LaunchedEffect(state.draftText) {
-        if (textValue.text.isEmpty() && state.draftText.isNotEmpty()) {
+        val shouldApplyInlinePrefill =
+            state.editingMessage == null &&
+                    state.draftText.isInlineBotPrefillText() &&
+                    state.draftText != textValue.text
+
+        if (shouldApplyInlinePrefill || (textValue.text.isEmpty() && state.draftText.isNotEmpty())) {
             textValue = TextFieldValue(state.draftText, TextRange(state.draftText.length))
+            if (shouldApplyInlinePrefill) {
+                focusRequester.requestFocus()
+            }
         }
     }
 
@@ -432,22 +443,22 @@ fun ChatInputBar(
                     }
 
                     AnimatedVisibility(
-                        visible = (state.inlineBotResults != null && (state.inlineBotResults.results.isNotEmpty() || state.inlineBotResults.switchPmText != null)) || state.isInlineBotLoading,
+                        visible = state.currentInlineBotUsername != null || state.isInlineBotLoading,
                         enter = expandVertically() + fadeIn(),
                         exit = shrinkVertically() + fadeOut()
                     ) {
                         InlineBotResults(
                             inlineBotResults = state.inlineBotResults,
+                            isInlineMode = state.currentInlineBotUsername != null,
                             isLoading = state.isInlineBotLoading,
                             onResultClick = { resultId ->
                                 actions.onSendInlineResult(resultId)
                                 textValue = TextFieldValue("")
                             },
                             onSwitchPmClick = { text ->
-                                actions.onOpenMiniApp(
-                                    text,
-                                    "switch_pm"
-                                )
+                                state.currentInlineBotUsername?.let { username ->
+                                    actions.onInlineSwitchPm(username, text)
+                                }
                             },
                             onLoadMore = { offset ->
                                 actions.onLoadMoreInlineResults(offset)
@@ -711,6 +722,39 @@ private fun Context.hasAllPermissions(permissions: List<String>): Boolean {
     return permissions.all { permission ->
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
+}
+
+private data class InlineQueryInput(
+    val botUsername: String,
+    val query: String
+)
+
+private fun parseInlineQueryInput(text: String, selection: TextRange): InlineQueryInput? {
+    if (!selection.collapsed) return null
+    val cursor = selection.start
+    if (!text.startsWith('@') || cursor !in 0..text.length) return null
+
+    val firstSpaceIndex = text.indexOf(' ')
+    if (firstSpaceIndex <= 1) return null
+    if (cursor <= firstSpaceIndex) return null
+
+    val botUsername = text.substring(1, firstSpaceIndex)
+    if (botUsername.any { !it.isLetterOrDigit() && it != '_' }) return null
+
+    val query = text.substring(firstSpaceIndex + 1)
+    if (query.isBlank()) return null
+    if (query.contains('\n')) return null
+
+    return InlineQueryInput(
+        botUsername = botUsername,
+        query = query
+    )
+}
+
+private fun String.isInlineBotPrefillText(): Boolean {
+    if (!startsWith("@") || !endsWith(" ")) return false
+    val username = drop(1).dropLast(1)
+    return username.isNotEmpty() && username.all { it.isLetterOrDigit() || it == '_' }
 }
 
 private fun Context.declaredPermissions(): Set<String> {

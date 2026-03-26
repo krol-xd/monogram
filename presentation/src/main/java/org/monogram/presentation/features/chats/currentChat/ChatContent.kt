@@ -65,6 +65,8 @@ import org.monogram.presentation.features.chats.currentChat.editor.video.VideoEd
 import org.monogram.presentation.root.RootComponent
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlin.math.abs
 
 @Composable
@@ -496,6 +498,8 @@ fun ChatContent(
                                     replyMarkup = state.messages.firstOrNull { it.replyMarkup is ReplyMarkupModel.ShowKeyboard }?.replyMarkup,
                                     mentionSuggestions = state.mentionSuggestions,
                                     inlineBotResults = state.inlineBotResults,
+                                    currentInlineBotUsername = state.currentInlineBotUsername,
+                                    currentInlineQuery = state.currentInlineQuery,
                                     isInlineBotLoading = state.isInlineBotLoading,
                                     attachBots = state.attachMenuBots
                                 )
@@ -562,6 +566,13 @@ fun ChatContent(
                                         component.onLoadMoreInlineResults(offset)
                                     },
                                     onSendInlineResult = { resultId -> component.onSendInlineResult(resultId) },
+                                    onInlineSwitchPm = { botUsername, parameter ->
+                                        val encodedParameter = URLEncoder.encode(
+                                            parameter,
+                                            StandardCharsets.UTF_8.name()
+                                        )
+                                        component.onLinkClick("https://t.me/$botUsername?start=$encodedParameter")
+                                    },
                                     onAttachBotClick = { bot ->
                                         component.onOpenAttachBot(bot.botUserId, bot.name)
                                     }
@@ -698,6 +709,11 @@ fun ChatContent(
                                     onMessagePositionChange = { pos, size ->
                                         menuOffset = pos
                                         menuMessageSize = size
+                                    },
+                                    onViaBotClick = { botUsername ->
+                                        val prefill = "@$botUsername "
+                                        component.onDraftChange(prefill)
+                                        component.onInlineQueryChange("", "")
                                     },
                                     toProfile = {
                                         it.let { component.toProfile(it) }

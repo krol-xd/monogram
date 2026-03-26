@@ -1,17 +1,21 @@
 package org.monogram.presentation.features.chats.currentChat.components.inputbar
 
-import android.util.Log
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,30 +37,33 @@ import org.monogram.domain.models.MessageContent
 import org.monogram.domain.repository.InlineBotResultsModel
 import org.monogram.presentation.R
 
-private const val TAG = "InlineBotResults"
+private enum class InlineResultsMode {
+    Loading,
+    Empty,
+    Grid,
+    List
+}
 
 @Composable
 fun InlineBotResults(
     inlineBotResults: InlineBotResultsModel?,
+    isInlineMode: Boolean,
     isLoading: Boolean,
     onResultClick: (String) -> Unit,
     onSwitchPmClick: (String) -> Unit,
     onLoadMore: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val results = inlineBotResults?.results ?: emptyList()
-    val nextOffset = inlineBotResults?.nextOffset
-
-    LaunchedEffect(inlineBotResults) {
-        if (inlineBotResults != null) {
-            Log.d(TAG, "Results received: ${results.size} items. SwitchPM: ${inlineBotResults.switchPmText != null}")
-            results.forEachIndexed { index, result ->
-                Log.d(TAG, "Result[$index]: id=${result.id}, type=${result.type}, title=${result.title}")
-            }
-        }
+    val results = inlineBotResults?.results.orEmpty()
+    val nextOffset = inlineBotResults?.nextOffset?.takeIf { it.isNotBlank() }
+    val mode = when {
+        isLoading && results.isEmpty() -> InlineResultsMode.Loading
+        results.isEmpty() -> InlineResultsMode.Empty
+        results.shouldUseMediaGrid() -> InlineResultsMode.Grid
+        else -> InlineResultsMode.List
     }
 
-    if (results.isEmpty() && inlineBotResults?.switchPmText == null && !isLoading) {
+    if (!isInlineMode && results.isEmpty() && inlineBotResults?.switchPmText == null && !isLoading) {
         return
     }
 
@@ -65,132 +72,226 @@ fun InlineBotResults(
             .fillMaxWidth()
             .heightIn(max = 400.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
-        shadowElevation = 8.dp,
+        tonalElevation = 6.dp,
+        shadowElevation = 6.dp,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            if (inlineBotResults?.switchPmText != null && inlineBotResults.switchPmParameter != null) {
+            val switchPmText = inlineBotResults?.switchPmText
+            val switchPmParameter = inlineBotResults?.switchPmParameter
+            if (switchPmText != null && switchPmParameter != null) {
                 SwitchPmButton(
-                    text = inlineBotResults.switchPmText!!,
-                    onClick = {
-                        Log.d(TAG, "Switch PM clicked: ${inlineBotResults.switchPmParameter}")
-                        onSwitchPmClick(inlineBotResults.switchPmParameter!!)
-                    }
+                    text = switchPmText,
+                    onClick = { onSwitchPmClick(switchPmParameter) }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             }
 
             Box(modifier = Modifier.weight(1f)) {
-                if (results.isNotEmpty()) {
-                    val isGrid = remember(results) {
-                        val first = results.firstOrNull()
-                        val type = first?.type?.lowercase() ?: ""
-                        val hasText = results.any { !it.title.isNullOrBlank() || !it.description.isNullOrBlank() }
+                AnimatedContent(
+                    targetState = mode,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(180))
+                    },
+                    label = "InlineResultsMode"
+                ) { currentMode ->
+                    when (currentMode) {
+                        InlineResultsMode.Loading -> InlineLoadingPlaceholder()
+                        InlineResultsMode.Empty -> EmptyResultsPlaceholder()
+                        InlineResultsMode.Grid -> InlineMediaResultsGrid(
+                            results = results,
+                            nextOffset = nextOffset,
+                            isLoading = isLoading,
+                            onResultClick = onResultClick,
+                            onLoadMore = onLoadMore
+                        )
 
-                        if (hasText) {
-                            false
-                        } else {
-                            type.contains("photo") || type.contains("gif") ||
-                                    type.contains("sticker") || type.contains("video") ||
-                                    type.contains("animation")
-                        }
-                    }
-
-                    if (isGrid) {
-                        val firstType = remember(results) { results.firstOrNull()?.type?.lowercase() ?: "" }
-                        val columns = when {
-                            firstType.contains("sticker") -> 5
-                            firstType.contains("photo") -> 3
-                            else -> 3
-                        }
-
-                        val gridState = rememberLazyStaggeredGridState()
-                        val shouldLoadMore by remember {
-                            derivedStateOf {
-                                val lastVisibleItem = gridState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisibleItem != null && lastVisibleItem.index >= results.size - 5 && !isLoading && nextOffset != null
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMore) {
-                            if (shouldLoadMore) {
-                                Log.d(TAG, "Loading more results for grid...")
-                                onLoadMore(nextOffset!!)
-                            }
-                        }
-
-                        LazyVerticalStaggeredGrid(
-                            columns = StaggeredGridCells.Fixed(columns),
-                            contentPadding = PaddingValues(2.dp),
-                            verticalItemSpacing = 2.dp,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.fillMaxSize(),
-                            state = gridState
-                        ) {
-                            itemsIndexed(results, key = { index, item -> "${item.id}_$index" }) { _, result ->
-                                InlineBotMediaItem(
-                                    result = result,
-                                    onClick = {
-                                        Log.d(TAG, "Media result clicked: ${result.id}")
-                                        onResultClick(result.id)
-                                    }
-                                )
-                            }
-                        }
-                    } else {
-                        val listState = rememberLazyListState()
-                        val shouldLoadMore by remember {
-                            derivedStateOf {
-                                val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                                lastVisibleItemIndex != null && lastVisibleItemIndex >= results.size - 5 && !isLoading && nextOffset != null
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMore) {
-                            if (shouldLoadMore) {
-                                Log.d(TAG, "Loading more results for list...")
-                                onLoadMore(nextOffset!!)
-                            }
-                        }
-
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(vertical = 4.dp),
-                            state = listState
-                        ) {
-                            itemsIndexed(results, key = { index, item -> "${item.id}_$index" }) { index, result ->
-                                InlineBotResultItem(
-                                    result = result,
-                                    onClick = {
-                                        Log.d(TAG, "Result clicked: ${result.id}")
-                                        onResultClick(result.id)
-                                    }
-                                )
-                                if (index < results.size - 1) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 16.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                                    )
-                                }
-                            }
-                        }
+                        InlineResultsMode.List -> InlineResultsList(
+                            results = results,
+                            nextOffset = nextOffset,
+                            isLoading = isLoading,
+                            onResultClick = onResultClick,
+                            onLoadMore = onLoadMore
+                        )
                     }
                 }
 
-                if (isLoading) {
+                if (isLoading && results.isNotEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f)),
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.25f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InlineMediaResultsGrid(
+    results: List<InlineQueryResultModel>,
+    nextOffset: String?,
+    isLoading: Boolean,
+    onResultClick: (String) -> Unit,
+    onLoadMore: (String) -> Unit
+) {
+    val gridState = rememberLazyGridState()
+    val isStickerGrid = results.firstOrNull()?.normalizedType() == "sticker"
+
+    var lastRequestedOffset by remember { mutableStateOf<String?>(null) }
+    val shouldLoadMore by remember(results, isLoading, nextOffset) {
+        derivedStateOf {
+            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible >= results.size - 4 && !isLoading && nextOffset != null
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, nextOffset) {
+        val offset = nextOffset
+        if (shouldLoadMore && offset != null && offset != lastRequestedOffset) {
+            lastRequestedOffset = offset
+            onLoadMore(offset)
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val minCellWidth = if (isStickerGrid) 74.dp else 112.dp
+        val maxColumns = if (isStickerGrid) 8 else 5
+        val columns = (maxWidth / minCellWidth).toInt().coerceIn(2, maxColumns)
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            contentPadding = PaddingValues(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxSize(),
+            state = gridState
+        ) {
+            itemsIndexed(results, key = { index, item -> "${item.type}:${item.id}:$index" }) { index, result ->
+                InlineResultAnimatedItem(index = index) {
+                    InlineBotMediaItem(
+                        result = result,
+                        onClick = { onResultClick(result.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InlineResultsList(
+    results: List<InlineQueryResultModel>,
+    nextOffset: String?,
+    isLoading: Boolean,
+    onResultClick: (String) -> Unit,
+    onLoadMore: (String) -> Unit
+) {
+    val listState = rememberLazyListState()
+    var lastRequestedOffset by remember { mutableStateOf<String?>(null) }
+    val shouldLoadMore by remember(results, isLoading, nextOffset) {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible >= results.size - 4 && !isLoading && nextOffset != null
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, nextOffset) {
+        val offset = nextOffset
+        if (shouldLoadMore && offset != null && offset != lastRequestedOffset) {
+            lastRequestedOffset = offset
+            onLoadMore(offset)
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 6.dp),
+        state = listState
+    ) {
+        itemsIndexed(results, key = { index, item -> "${item.type}:${item.id}:$index" }) { index, result ->
+            InlineResultAnimatedItem(index = index) {
+                InlineBotResultItem(
+                    result = result,
+                    onClick = { onResultClick(result.id) }
+                )
+            }
+            if (index < results.lastIndex) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 16.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyResultsPlaceholder() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.no_results_found),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun InlineLoadingPlaceholder() {
+    val transition = rememberInfiniteTransition(label = "InlineLoading")
+    val alpha by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "InlineLoadingAlpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        repeat(4) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha))
+            )
+        }
+    }
+}
+
+@Composable
+private fun InlineResultAnimatedItem(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var visible by remember(index) { mutableStateOf(false) }
+    LaunchedEffect(index) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(180, delayMillis = (index.coerceAtMost(6) * 18))) +
+                scaleIn(animationSpec = tween(220), initialScale = 0.97f)
+    ) {
+        content()
     }
 }
 
@@ -218,13 +319,13 @@ private fun SwitchPmButton(
 @Composable
 private fun rememberMediaModel(result: InlineQueryResultModel): Any? {
     val context = LocalContext.current
-    val contentPath = when (val c = result.content) {
-        is MessageContent.Photo -> if (c.isDownloading) null else c.path
-        is MessageContent.Video -> if (c.isDownloading) null else c.path
-        is MessageContent.Gif -> if (c.isDownloading) null else c.path
-        is MessageContent.Sticker -> if (c.isDownloading) null else c.path
-        is MessageContent.VideoNote -> if (c.isDownloading) null else c.path
-        is MessageContent.Document -> if (c.isDownloading) null else c.path
+    val contentPath = when (val content = result.content) {
+        is MessageContent.Photo -> if (content.isDownloading) null else content.path
+        is MessageContent.Video -> if (content.isDownloading) null else content.path
+        is MessageContent.Gif -> if (content.isDownloading) null else content.path
+        is MessageContent.Sticker -> if (content.isDownloading) null else content.path
+        is MessageContent.VideoNote -> if (content.isDownloading) null else content.path
+        is MessageContent.Document -> if (content.isDownloading) null else content.path
         else -> null
     }
 
@@ -242,44 +343,55 @@ private fun rememberMediaModel(result: InlineQueryResultModel): Any? {
 @Composable
 private fun InlineBotMediaItem(
     result: InlineQueryResultModel,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val aspectRatio = remember(result.width, result.height) {
-        if (result.width > 0 && result.height > 0) {
-            (result.width.toFloat() / result.height.toFloat()).coerceIn(0.6f, 1.8f)
+    val aspectRatio = remember(result.width, result.height, result.normalizedType()) {
+        val type = result.normalizedType()
+        if (type == "sticker") {
+            1f
+        } else if (result.width > 0 && result.height > 0) {
+            (result.width.toFloat() / result.height.toFloat()).coerceIn(0.7f, 1.6f)
         } else {
             1f
         }
     }
-
+    val type = result.normalizedType()
     val mediaModel = rememberMediaModel(result)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        AsyncImage(
-            model = mediaModel,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+        InlineMediaPlaceholder(
+            type = type,
+            modifier = Modifier.matchParentSize()
         )
 
-        val type = result.type.lowercase()
-        if (type.contains("gif") || type.contains("video") || type.contains("animation")) {
+        if (mediaModel != null) {
+            AsyncImage(
+                model = mediaModel,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = if (type == "sticker") ContentScale.Fit else ContentScale.Crop
+            )
+        }
+
+        if (type == "gif" || type == "video") {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.BottomEnd)
                     .padding(4.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = if (type.contains("gif") || type.contains("animation")) stringResource(R.string.media_type_gif) else stringResource(R.string.media_type_video),
+                    text = if (type == "gif") stringResource(R.string.media_type_gif) else stringResource(R.string.media_type_video),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                     fontSize = 10.sp,
@@ -293,52 +405,33 @@ private fun InlineBotMediaItem(
 @Composable
 private fun InlineBotResultItem(
     result: InlineQueryResultModel,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val hasText = !result.title.isNullOrBlank() || !result.description.isNullOrBlank()
     val mediaModel = rememberMediaModel(result)
+    val title = result.title?.takeIf { it.isNotBlank() } ?: resultTypeLabel(result)
+    val description = result.description?.takeIf { it.isNotBlank() }
 
-    if (!hasText && result.thumbUrl != null) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable(onClick = onClick)
-        ) {
-            val aspectRatio = if (result.width > 0 && result.height > 0) {
-                (result.width.toFloat() / result.height.toFloat()).coerceIn(0.5f, 2.5f)
-            } else {
-                16f / 9f
-            }
-
-            AsyncImage(
-                model = mediaModel,
-                contentDescription = null,
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (mediaModel != null || result.isVisualResult()) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 180.dp)
-                    .aspectRatio(aspectRatio),
-                contentScale = ContentScale.Crop
-            )
-        }
-    } else {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (result.thumbUrl != null) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                InlineMediaPlaceholder(
+                    type = result.normalizedType(),
+                    modifier = Modifier.matchParentSize()
+                )
+                if (mediaModel != null) {
                     AsyncImage(
                         model = mediaModel,
                         contentDescription = null,
@@ -346,31 +439,109 @@ private fun InlineBotResultItem(
                         contentScale = ContentScale.Crop
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
             }
+            Spacer(modifier = Modifier.width(12.dp))
+        }
 
-            Column(modifier = Modifier.weight(1f)) {
-                if (!result.title.isNullOrBlank()) {
-                    Text(
-                        text = result.title.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-                if (!result.description.isNullOrBlank()) {
-                    Text(
-                        text = result.description.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun InlineMediaPlaceholder(
+    type: String,
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "InlinePlaceholder")
+    val alpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 950),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "InlinePlaceholderAlpha"
+    )
+
+    val icon = if (type == "video" || type == "gif") {
+        Icons.Rounded.PlayArrow
+    } else {
+        Icons.Rounded.Image
+    }
+
+    Box(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun resultTypeLabel(result: InlineQueryResultModel): String {
+    return when (result.normalizedType()) {
+        "photo" -> stringResource(R.string.media_type_photo)
+        "video" -> stringResource(R.string.media_type_video)
+        "sticker" -> stringResource(R.string.media_type_sticker)
+        "voice" -> stringResource(R.string.media_type_voice)
+        "gif" -> stringResource(R.string.media_type_gif)
+        "location" -> stringResource(R.string.media_type_location)
+        else -> stringResource(R.string.media_type_message)
+    }
+}
+
+private fun List<InlineQueryResultModel>.shouldUseMediaGrid(): Boolean {
+    if (isEmpty()) return false
+    val hasNamedMedia = any { result ->
+        result.isVisualResult() && (!result.title.isNullOrBlank() || !result.description.isNullOrBlank())
+    }
+    if (hasNamedMedia) return false
+
+    val visualItems = count { it.isVisualResult() }
+    return visualItems >= size * 0.7f
+}
+
+private fun InlineQueryResultModel.isVisualResult(): Boolean {
+    return when (normalizedType()) {
+        "photo", "video", "gif", "sticker" -> true
+        else -> false
+    }
+}
+
+private fun InlineQueryResultModel.normalizedType(): String {
+    val source = type.lowercase()
+    return when {
+        "sticker" in source -> "sticker"
+        "animation" in source || "gif" in source -> "gif"
+        "photo" in source -> "photo"
+        "video" in source -> "video"
+        "voice" in source -> "voice"
+        "location" in source || "venue" in source -> "location"
+        else -> "message"
     }
 }
