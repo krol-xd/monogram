@@ -47,6 +47,7 @@ import kotlinx.coroutines.isActive
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
 import org.monogram.presentation.core.util.getMimeType
+import org.monogram.presentation.features.stickers.ui.view.shimmerEffect
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -208,7 +209,12 @@ fun VideoNoteBubble(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .shimmerEffect(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             if (content.isDownloading) {
                                 CircularProgressIndicator(
                                     progress = { content.downloadProgress },

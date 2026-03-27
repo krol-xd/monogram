@@ -612,7 +612,7 @@ class MessageRepositoryImpl(
     }
 
     override suspend fun getFilePath(fileId: Int): String? {
-        val result = gateway.execute(TdApi.GetFile(fileId))
+        val result = runCatching { gateway.execute(TdApi.GetFile(fileId)) }.getOrNull()
         return if (result is TdApi.File) {
             result.local.path.ifEmpty { null }
         } else {
@@ -1106,7 +1106,7 @@ class MessageRepositoryImpl(
         }
 
     override suspend fun getFileInfo(fileId: Int): FileModel? {
-        val result = gateway.execute(TdApi.GetFile(fileId))
+        val result = runCatching { gateway.execute(TdApi.GetFile(fileId)) }.getOrNull()
         if (result is TdApi.File) {
             val model = FileModel(
                 id = result.id,

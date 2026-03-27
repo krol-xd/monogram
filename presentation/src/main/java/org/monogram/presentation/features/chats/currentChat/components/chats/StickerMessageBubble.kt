@@ -2,7 +2,6 @@ package org.monogram.presentation.features.chats.currentChat.components.chats
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +22,7 @@ import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
 import org.monogram.domain.models.StickerModel
 import org.monogram.presentation.features.stickers.ui.view.StickerImage
+import org.monogram.presentation.features.stickers.ui.view.StickerSkeleton
 
 @OptIn(UnstableApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -98,13 +99,17 @@ fun StickerMessageBubble(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape),
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
+                    StickerSkeleton(modifier = Modifier.matchParentSize())
+
                     if (content.isDownloading) {
                         CircularProgressIndicator(
                             progress = { content.downloadProgress },
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(48.dp),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.35f)
                         )
                     } else {
                         Icon(

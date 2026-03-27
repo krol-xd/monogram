@@ -20,13 +20,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isUnspecified
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.monogram.domain.models.webapp.PageBlockCaption
 import org.monogram.domain.models.webapp.RichText
 import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
 import org.monogram.presentation.features.chats.currentChat.components.VideoStickerPlayer
 import org.monogram.presentation.features.chats.currentChat.components.VideoType
 import org.monogram.presentation.features.chats.currentChat.components.chats.normalizeUrl
+import org.monogram.presentation.features.stickers.ui.view.shimmerEffect
 
 @Composable
 fun RichTextView(
@@ -77,22 +81,31 @@ fun AsyncImageWithDownload(
     contentScale: ContentScale = ContentScale.Fit
 ) {
     val messageRepository = LocalMessageRepository.current
-    var currentPath by remember(path) { mutableStateOf(path) }
+    var currentPath by remember(fileId) { mutableStateOf(path) }
     var progress by remember { mutableStateOf(0f) }
 
-    LaunchedEffect(fileId) {
+    LaunchedEffect(path, fileId) {
+        if (!path.isNullOrEmpty()) {
+            currentPath = path
+        }
         if (currentPath == null) {
             messageRepository.downloadFile(fileId)
 
-            launch {
+            val progressJob = launch {
                 messageRepository.messageDownloadProgressFlow
                     .filter { it.first == fileId.toLong() }
                     .collect { progress = it.second }
             }
 
-            messageRepository.messageDownloadCompletedFlow
-                .filter { it.first == fileId.toLong() }
-                .collect { currentPath = it.second }
+            val completedPath = withTimeoutOrNull(60_000L) {
+                messageRepository.messageDownloadCompletedFlow
+                    .filter { it.first == fileId.toLong() }
+                    .mapNotNull { (_, candidatePath) -> candidatePath.takeIf { it.isNotEmpty() } }
+                    .first()
+            }
+
+            currentPath = completedPath ?: messageRepository.getFilePath(fileId)
+            progressJob.cancel()
         }
     }
 
@@ -114,6 +127,12 @@ fun AsyncImageWithDownload(
                         .blur(10.dp),
                     contentScale = contentScale,
                     alpha = 0.5f
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .shimmerEffect()
                 )
             }
 
@@ -145,22 +164,31 @@ fun AsyncVideoWithDownload(
     contentScale: ContentScale = ContentScale.Fit
 ) {
     val messageRepository = LocalMessageRepository.current
-    var currentPath by remember(path) { mutableStateOf(path) }
+    var currentPath by remember(fileId) { mutableStateOf(path) }
     var progress by remember { mutableStateOf(0f) }
 
-    LaunchedEffect(fileId) {
+    LaunchedEffect(path, fileId) {
+        if (!path.isNullOrEmpty()) {
+            currentPath = path
+        }
         if (currentPath == null) {
             messageRepository.downloadFile(fileId)
 
-            launch {
+            val progressJob = launch {
                 messageRepository.messageDownloadProgressFlow
                     .filter { it.first == fileId.toLong() }
                     .collect { progress = it.second }
             }
 
-            messageRepository.messageDownloadCompletedFlow
-                .filter { it.first == fileId.toLong() }
-                .collect { currentPath = it.second }
+            val completedPath = withTimeoutOrNull(60_000L) {
+                messageRepository.messageDownloadCompletedFlow
+                    .filter { it.first == fileId.toLong() }
+                    .mapNotNull { (_, candidatePath) -> candidatePath.takeIf { it.isNotEmpty() } }
+                    .first()
+            }
+
+            currentPath = completedPath ?: messageRepository.getFilePath(fileId)
+            progressJob.cancel()
         }
     }
 
@@ -176,7 +204,9 @@ fun AsyncVideoWithDownload(
         )
     } else {
         Box(
-            modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .shimmerEffect(),
             contentAlignment = Alignment.Center
         ) {
             if (progress > 0f && progress < 1f) {

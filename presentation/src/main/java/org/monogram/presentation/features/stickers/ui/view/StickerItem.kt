@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.firstOrNull
 import org.koin.compose.koinInject
 import org.monogram.domain.models.StickerModel
 import org.monogram.domain.repository.StickerRepository
@@ -21,16 +22,23 @@ fun StickerItem(
     onLongClick: ((StickerModel) -> Unit)? = null,
     stickerRepository: StickerRepository = koinInject()
 ) {
+    val isScrolling = LocalIsScrolling.current
     var currentPath by remember(sticker.id, sticker.path) {
         mutableStateOf(sticker.path.takeIf(::isExistingPath))
     }
 
-    LaunchedEffect(sticker.id, sticker.path) {
-        if (currentPath == null || !isExistingPath(currentPath)) {
+    LaunchedEffect(sticker.id, sticker.path, isScrolling) {
+        if (!sticker.path.isNullOrEmpty() && isExistingPath(sticker.path)) {
+            currentPath = sticker.path
+            return@LaunchedEffect
+        }
+
+        if (!isScrolling && (currentPath == null || !isExistingPath(currentPath))) {
             currentPath = null
-            stickerRepository.getStickerFile(sticker.id).collect {
-                currentPath = it?.takeIf(::isExistingPath)
-            }
+            currentPath = stickerRepository
+                .getStickerFile(sticker.id)
+                .firstOrNull()
+                ?.takeIf(::isExistingPath)
         }
     }
 

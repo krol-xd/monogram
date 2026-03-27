@@ -44,6 +44,7 @@ class LottieDecoder(
         val drawable = LottieDrawable().apply {
             setComposition(composition)
             enableFeatureFlag(LottieFeatureFlag.MergePathsApi19, true)
+            clipToCompositionBounds = false
             repeatCount = LottieDrawable.INFINITE
         }
 

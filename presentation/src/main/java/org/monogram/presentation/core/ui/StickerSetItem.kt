@@ -18,11 +18,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.firstOrNull
 import org.koin.compose.koinInject
 import org.monogram.domain.models.StickerSetModel
 import org.monogram.domain.repository.StickerRepository
 import org.monogram.presentation.R
 import org.monogram.presentation.features.stickers.ui.view.StickerImage
+import org.monogram.presentation.features.stickers.ui.view.StickerSkeleton
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -210,11 +212,7 @@ private fun StickerThumbnail(stickerSet: StickerSetModel) {
 
     LaunchedEffect(targetSticker) {
         if (targetSticker != null && currentPath == null) {
-            stickerRepository.getStickerFile(targetSticker.id).collect { path ->
-                if (path != null) {
-                    currentPath = path
-                }
-            }
+            currentPath = stickerRepository.getStickerFile(targetSticker.id).firstOrNull()
         }
     }
 
@@ -232,6 +230,8 @@ private fun StickerThumbnail(stickerSet: StickerSetModel) {
                     modifier = Modifier.size(48.dp),
                     animate = false
                 )
+            } else if (targetSticker != null) {
+                StickerSkeleton(modifier = Modifier.size(48.dp))
             } else if (!emoji.isNullOrEmpty()) {
                 Text(
                     text = emoji,

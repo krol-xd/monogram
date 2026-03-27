@@ -34,6 +34,7 @@ import org.monogram.domain.models.StickerSetModel
 import org.monogram.domain.repository.StickerRepository
 import org.monogram.presentation.R
 import org.monogram.presentation.features.chats.currentChat.components.StickerSetSheet
+import org.monogram.presentation.features.stickers.ui.view.LocalIsScrolling
 import org.monogram.presentation.features.stickers.ui.view.StickerItem
 import org.monogram.presentation.features.stickers.ui.view.StickerSkeleton
 import org.monogram.presentation.features.stickers.ui.view.shimmerEffect
@@ -50,6 +51,7 @@ fun StickersView(
     var recentStickers by remember { mutableStateOf<List<StickerModel>>(emptyList()) }
     var previewStickerSet by remember { mutableStateOf<StickerSetModel?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var debouncedSearchQuery by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
@@ -63,10 +65,18 @@ fun StickersView(
     }
 
     LaunchedEffect(searchQuery) {
-        if (searchQuery.length >= 2) {
+        if (searchQuery.isBlank()) {
+            debouncedSearchQuery = ""
+        } else {
             delay(300)
-            searchResultsStickers = stickerRepository.searchStickers(searchQuery)
-            searchResultsSets = stickerRepository.searchStickerSets(searchQuery)
+            debouncedSearchQuery = searchQuery
+        }
+    }
+
+    LaunchedEffect(debouncedSearchQuery) {
+        if (debouncedSearchQuery.length >= 2) {
+            searchResultsStickers = stickerRepository.searchStickers(debouncedSearchQuery)
+            searchResultsSets = stickerRepository.searchStickerSets(debouncedSearchQuery)
         } else {
             searchResultsStickers = emptyList()
             searchResultsSets = emptyList()
@@ -147,87 +157,90 @@ fun StickersView(
             if (stickerSets.isEmpty() && recentStickers.isEmpty()) {
                 StickerGridSkeleton(contentPadding = contentPadding)
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 64.dp),
-                    state = gridState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = 8.dp,
-                        bottom = contentPadding.calculateBottomPadding() + 8.dp
-                    ),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (searchQuery.isNotEmpty()) {
-                        if (searchResultsStickers.isNotEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                PackHeader(stringResource(R.string.stickers_header_all))
+                CompositionLocalProvider(LocalIsScrolling provides gridState.isScrollInProgress) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 64.dp),
+                        state = gridState,
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 8.dp,
+                            bottom = contentPadding.calculateBottomPadding() + 8.dp
+                        ),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (searchQuery.isNotEmpty()) {
+                            if (searchResultsStickers.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    PackHeader(stringResource(R.string.stickers_header_all))
+                                }
+                                items(searchResultsStickers, key = { "search_sticker_${it.id}" }) { sticker ->
+                                    StickerGridItem(sticker, onStickerSelected, {
+                                        scope.launch {
+                                            val set = stickerRepository.getStickerSet(sticker.id)
+                                            previewStickerSet = set
+                                        }
+                                    })
+                                }
                             }
-                            items(searchResultsStickers, key = { "search_sticker_${it.id}" }) { sticker ->
-                                StickerGridItem(sticker, onStickerSelected, {
-                                    scope.launch {
-                                        val set = stickerRepository.getStickerSet(sticker.id)
-                                        previewStickerSet = set
-                                    }
-                                })
-                            }
-                        }
 
-                        searchResultsSets.forEach { set ->
-                            item(key = "search_header_${set.id}", span = { GridItemSpan(maxLineSpan) }) {
-                                PackHeader(set.title, onClick = { previewStickerSet = set })
+                            searchResultsSets.forEach { set ->
+                                item(key = "search_header_${set.id}", span = { GridItemSpan(maxLineSpan) }) {
+                                    PackHeader(set.title, onClick = { previewStickerSet = set })
+                                }
+                                items(set.stickers, key = { "search_set_${set.id}_${it.id}" }) { sticker ->
+                                    StickerGridItem(sticker, onStickerSelected, {
+                                        scope.launch {
+                                            previewStickerSet = set
+                                        }
+                                    })
+                                }
                             }
-                            items(set.stickers, key = { "search_set_${set.id}_${it.id}" }) { sticker ->
-                                StickerGridItem(sticker, onStickerSelected, {
-                                    scope.launch {
-                                        previewStickerSet = set
-                                    }
-                                })
-                            }
-                        }
 
-                        if (searchResultsStickers.isEmpty() && searchResultsSets.isEmpty()) {
-                            val filtered = stickerSets.flatMap { it.stickers }.filter {
-                                it.emoji.contains(searchQuery) || it.id.toString().contains(searchQuery)
-                            }.distinctBy { it.id }
+                            if (searchResultsStickers.isEmpty() && searchResultsSets.isEmpty() && debouncedSearchQuery.isNotEmpty()) {
+                                val filtered = stickerSets.flatMap { it.stickers }.filter {
+                                    it.emoji.contains(debouncedSearchQuery) || it.id.toString()
+                                        .contains(debouncedSearchQuery)
+                                }.distinctBy { it.id }
 
-                            items(filtered, key = { "search_local_${it.id}" }) { sticker ->
-                                StickerGridItem(sticker, onStickerSelected, {
-                                    scope.launch {
-                                        val set = stickerRepository.getStickerSet(sticker.id)
-                                        previewStickerSet = set
-                                    }
-                                })
+                                items(filtered, key = { "search_local_${it.id}" }) { sticker ->
+                                    StickerGridItem(sticker, onStickerSelected, {
+                                        scope.launch {
+                                            val set = stickerRepository.getStickerSet(sticker.id)
+                                            previewStickerSet = set
+                                        }
+                                    })
+                                }
                             }
-                        }
-                    } else {
-                        if (recentStickers.isNotEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                PackHeader(stringResource(R.string.stickers_header_recent))
+                        } else {
+                            if (recentStickers.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    PackHeader(stringResource(R.string.stickers_header_recent))
+                                }
+                                items(recentStickers, key = { "recent_${it.id}" }) { sticker ->
+                                    StickerGridItem(sticker, onStickerSelected, {
+                                        scope.launch {
+                                            val set = stickerRepository.getStickerSet(sticker.id)
+                                            previewStickerSet = set
+                                        }
+                                    })
+                                }
                             }
-                            items(recentStickers, key = { "recent_${it.id}" }) { sticker ->
-                                StickerGridItem(sticker, onStickerSelected, {
-                                    scope.launch {
-                                        val set = stickerRepository.getStickerSet(sticker.id)
-                                        previewStickerSet = set
-                                    }
-                                })
-                            }
-                        }
 
-                        stickerSets.forEach { set ->
-                            item(key = "header_${set.id}", span = { GridItemSpan(maxLineSpan) }) {
-                                PackHeader(set.title, onClick = { previewStickerSet = set })
-                            }
-                            items(set.stickers, key = { "set_${set.id}_${it.id}" }) { sticker ->
-                                StickerGridItem(sticker, onStickerSelected, {
-                                    scope.launch {
-                                        val s = stickerRepository.getStickerSet(sticker.id)
-                                        previewStickerSet = s
-                                    }
-                                })
+                            stickerSets.forEach { set ->
+                                item(key = "header_${set.id}", span = { GridItemSpan(maxLineSpan) }) {
+                                    PackHeader(set.title, onClick = { previewStickerSet = set })
+                                }
+                                items(set.stickers, key = { "set_${set.id}_${it.id}" }) { sticker ->
+                                    StickerGridItem(sticker, onStickerSelected, {
+                                        scope.launch {
+                                            val s = stickerRepository.getStickerSet(sticker.id)
+                                            previewStickerSet = s
+                                        }
+                                    })
+                                }
                             }
                         }
                     }
@@ -278,8 +291,10 @@ fun StickerGridItem(
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         StickerItem(

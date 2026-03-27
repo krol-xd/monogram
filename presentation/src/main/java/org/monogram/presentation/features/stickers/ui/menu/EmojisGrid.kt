@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.monogram.domain.models.RecentEmojiModel
@@ -58,6 +57,7 @@ fun EmojisGrid(
     var selectedSetId by remember { mutableLongStateOf(-1L) } // -1 for recent, -2 for standard
     val recentEmojis by stickerRepository.recentEmojis.collectAsState(initial = emptyList())
     var searchQuery by remember { mutableStateOf("") }
+    var debouncedSearchQuery by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
     var previewStickerSet by remember { mutableStateOf<StickerSetModel?>(null) }
     val scope = rememberCoroutineScope()
@@ -76,10 +76,18 @@ fun EmojisGrid(
     }
 
     LaunchedEffect(searchQuery) {
-        if (searchQuery.length >= 2) {
+        if (searchQuery.isBlank()) {
+            debouncedSearchQuery = ""
+        } else {
             delay(300)
-            searchResultsEmojis = stickerRepository.searchEmojis(searchQuery)
-            searchResultsCustomEmojis = stickerRepository.searchCustomEmojis(searchQuery)
+            debouncedSearchQuery = searchQuery
+        }
+    }
+
+    LaunchedEffect(debouncedSearchQuery) {
+        if (debouncedSearchQuery.length >= 2) {
+            searchResultsEmojis = stickerRepository.searchEmojis(debouncedSearchQuery)
+            searchResultsCustomEmojis = stickerRepository.searchCustomEmojis(debouncedSearchQuery)
         } else {
             searchResultsEmojis = emptyList()
             searchResultsCustomEmojis = emptyList()
@@ -115,9 +123,9 @@ fun EmojisGrid(
         sectionOffsets.associate { it.id to it.startIndex }
     }
 
-    val localSearchFallbackResults = remember(searchQuery, standardEmojis) {
-        if (searchQuery.isNotEmpty()) {
-            standardEmojis.filter { it.contains(searchQuery) }
+    val localSearchFallbackResults = remember(debouncedSearchQuery, standardEmojis) {
+        if (debouncedSearchQuery.isNotEmpty()) {
+            standardEmojis.filter { it.contains(debouncedSearchQuery) }
         } else {
             emptyList()
         }
@@ -212,8 +220,10 @@ fun EmojisGrid(
                                 Box(
                                     modifier = Modifier
                                         .aspectRatio(1f)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     StickerItem(
@@ -249,8 +259,10 @@ fun EmojisGrid(
                                 Box(
                                     modifier = Modifier
                                         .aspectRatio(1f)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val sticker = item.sticker
@@ -299,8 +311,10 @@ fun EmojisGrid(
                                 Box(
                                     modifier = Modifier
                                         .aspectRatio(1f)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     StickerItem(

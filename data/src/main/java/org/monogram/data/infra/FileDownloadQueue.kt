@@ -69,11 +69,11 @@ class FileDownloadQueue(
 
     private val startGapMs = 160L
     private val notFoundCooldownMs = TimeUnit.MINUTES.toMillis(2)
-    private val maxTotalParallelDownloads = 5
-    private val maxVideoParallelDownloads = 2
+    private val maxTotalParallelDownloads = 10
+    private val maxVideoParallelDownloads = 3
     private val maxGifParallelDownloads = 2
-    private val maxDefaultParallelDownloads = 3
-    private val maxStickerParallelDownloads = 6
+    private val maxDefaultParallelDownloads = 4
+    private val maxStickerParallelDownloads = 5
     private val stickerStallMs = 20_000L
     private val defaultStallMs = 35_000L
     private val stalledRecoveryCooldownMs = 12_000L
@@ -92,8 +92,8 @@ class FileDownloadQueue(
         scope.appScope.launch(dispatcherProvider.default) {
             while (isActive) {
                 delay(TimeUnit.MINUTES.toMillis(1))
-                runCatching { retryFailedStickers() }
-                    .onFailure { Log.e("FileDownloadQueue", "retryFailedStickers failed", it) }
+                runCatching { retryFailedDownloads() }
+                    .onFailure { Log.e("FileDownloadQueue", "retryFailedDownloads failed", it) }
             }
         }
 
@@ -102,6 +102,14 @@ class FileDownloadQueue(
                 delay(15_000)
                 runCatching { recoverStalledDownloads() }
                     .onFailure { Log.e("FileDownloadQueue", "recoverStalledDownloads failed", it) }
+            }
+        }
+
+        scope.appScope.launch(dispatcherProvider.default) {
+            while (isActive) {
+                delay(TimeUnit.MINUTES.toMillis(5))
+                runCatching { cleanupDeadState() }
+                    .onFailure { Log.e("FileDownloadQueue", "cleanupDeadState failed", it) }
             }
         }
     }
@@ -178,56 +186,20 @@ class FileDownloadQueue(
         val deferred = downloadWaiters.getOrPut(fileId) { CompletableDeferred() }
 
         try {
-            var file = withTimeoutOrNull(30000) { gateway.execute(TdApi.GetFile(fileId)) }
-            if (file == null) {
-                handleDownloadFailure(req)
-                return
-            }
-            cache.fileCache[fileId] = file
-            lastProgressAt[fileId] = System.currentTimeMillis()
-
-            if (file.local.isDownloadingCompleted) {
+            val cached = cache.fileCache[fileId]
+            if (cached?.local?.isDownloadingCompleted == true) {
                 deferred.complete(Unit)
                 return
             }
 
-            val downloadCommand = withTimeoutOrNull(30000) {
+            lastProgressAt[fileId] = System.currentTimeMillis()
+
+            val started = withTimeoutOrNull(30000) {
                 gateway.execute(TdApi.DownloadFile(fileId, req.priority, req.offset, req.limit, req.synchronous))
             }
-            if (downloadCommand == null) {
+            if (started == null) {
                 handleDownloadFailure(req)
                 return
-            }
-
-            file = withTimeoutOrNull(30000) { gateway.execute(TdApi.GetFile(fileId)) }
-            if (file == null) {
-                handleDownloadFailure(req)
-                return
-            }
-            cache.fileCache[fileId] = file
-            lastProgressAt[fileId] = System.currentTimeMillis()
-
-            if (file.local.isDownloadingCompleted) {
-                deferred.complete(Unit)
-                return
-            }
-
-            if (!file.local.isDownloadingActive) {
-                // Retry once if it failed to start immediately
-                withTimeoutOrNull(30000) {
-                    gateway.execute(TdApi.DownloadFile(fileId, req.priority, req.offset, req.limit, req.synchronous))
-                }
-                file = withTimeoutOrNull(30000) { gateway.execute(TdApi.GetFile(fileId)) }
-                if (file == null) {
-                    handleDownloadFailure(req)
-                    return
-                }
-                cache.fileCache[fileId] = file
-
-                if (!file.local.isDownloadingActive && !file.local.isDownloadingCompleted) {
-                    handleDownloadFailure(req)
-                    return
-                }
             }
 
             val timeoutMs = when (req.type) {
@@ -238,12 +210,11 @@ class FileDownloadQueue(
                 DownloadType.DEFAULT -> TimeUnit.MINUTES.toMillis(3)
             }
 
-            val result = withTimeoutOrNull(timeoutMs) {
+            val completed = withTimeoutOrNull(timeoutMs) {
                 deferred.await()
             }
 
-            if (result == null) {
-                // Timeout reached
+            if (completed == null) {
                 handleDownloadFailure(req)
             }
         } catch (e: Exception) {
@@ -357,15 +328,34 @@ class FileDownloadQueue(
         return scaled + jitter
     }
 
-    private fun retryFailedStickers() {
+    private fun retryFailedDownloads() {
         val now = System.currentTimeMillis()
-        val toRetry = failedRequests.filter {
-            it.value.type == DownloadType.STICKER && it.value.availableAt <= now
-        }
+        val toRetry = failedRequests.filter { it.value.availableAt <= now }
         toRetry.forEach { (id, req) ->
             failedRequests.remove(id)
             enqueue(id, req.priority, req.type, req.offset, req.limit, req.synchronous)
         }
+    }
+
+    private fun cleanupDeadState() {
+        val now = System.currentTimeMillis()
+
+        notFoundCooldownUntil.entries.removeIf { it.value <= now }
+        failedRequests.entries.removeIf { now - it.value.availableAt > TimeUnit.MINUTES.toMillis(30) }
+
+        val live = HashSet<Int>(pendingRequests.size + activeRequests.size + failedRequests.size)
+        live.addAll(pendingRequests.keys)
+        live.addAll(activeRequests.keys)
+        live.addAll(failedRequests.keys)
+
+        fileDownloadTypes.entries.removeIf { it.key !in live }
+        lastProgressAt.entries.removeIf { !activeRequests.containsKey(it.key) }
+        stalledRecoveryAt.entries.removeIf { !activeRequests.containsKey(it.key) }
+
+        val completedStandalone = registry.standaloneFileIds.filter { fileId ->
+            cache.fileCache[fileId]?.local?.isDownloadingCompleted == true
+        }
+        completedStandalone.forEach { registry.standaloneFileIds.remove(it) }
     }
 
     private fun recoverStalledDownloads() {

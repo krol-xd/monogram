@@ -45,10 +45,7 @@ import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
@@ -307,7 +304,11 @@ fun ChatContent(
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
             .map { visibleItems ->
                 val visibleIds = mutableListOf<Long>()
+                val nearbyIds = mutableListOf<Long>()
                 if (visibleItems.isNotEmpty()) {
+                    val minIndex = visibleItems.minOf { it.index }
+                    val maxIndex = visibleItems.maxOf { it.index }
+
                     visibleItems.forEach { item ->
                         val groupedIndex = if (state.rootMessage != null) item.index - 1 else item.index
                         groupedMessages.getOrNull(groupedIndex)?.let { grouped ->
@@ -317,15 +318,27 @@ fun ChatContent(
                             }
                         }
                     }
+
+                    val nearbyStart = (minIndex - 5).coerceAtLeast(0)
+                    val nearbyEnd = maxIndex + 5
+                    for (index in nearbyStart..nearbyEnd) {
+                        if (index in minIndex..maxIndex) continue
+                        val groupedIndex = if (state.rootMessage != null) index - 1 else index
+                        groupedMessages.getOrNull(groupedIndex)?.let { grouped ->
+                            when (grouped) {
+                                is GroupedMessageItem.Single -> nearbyIds.add(grouped.message.id)
+                                is GroupedMessageItem.Album -> nearbyIds.addAll(grouped.messages.map { it.id })
+                            }
+                        }
+                    }
                 }
-                visibleIds
+                visibleIds.distinct() to nearbyIds.distinct().filterNot { it in visibleIds }
             }
             .distinctUntilChanged()
-            .collect { visibleIds ->
-                if (visibleIds.isNotEmpty()) {
-                    (component as? DefaultChatComponent)?.let {
-                        it.repositoryMessage.updateVisibleRange(it.chatId, visibleIds, emptyList())
-                    }
+            .debounce(100)
+            .collect { (visibleIds, nearbyIds) ->
+                (component as? DefaultChatComponent)?.let {
+                    it.repositoryMessage.updateVisibleRange(it.chatId, visibleIds, nearbyIds)
                 }
             }
     }

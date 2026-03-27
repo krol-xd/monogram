@@ -24,7 +24,7 @@ class TdFileDataSource(
     }
 
     override suspend fun getFile(fileId: Int): TdApi.File? {
-        val result = gateway.execute(TdApi.GetFile(fileId))
+        val result = runCatching { gateway.execute(TdApi.GetFile(fileId)) }.getOrNull()
         return if (result is TdApi.File) result else null
     }
 

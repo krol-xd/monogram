@@ -35,6 +35,7 @@ interface StickerRepository {
 
     suspend fun getStickerSet(setId: Long): StickerSetModel?
     suspend fun getStickerSetByName(name: String): StickerSetModel?
+    suspend fun verifyStickerSet(setId: Long)
     suspend fun toggleStickerSetInstalled(setId: Long, isInstalled: Boolean)
     suspend fun toggleStickerSetArchived(setId: Long, isArchived: Boolean)
     suspend fun reorderStickerSets(stickerType: TdLibStickerType, stickerSetIds: List<Long>)

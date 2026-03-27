@@ -50,6 +50,7 @@ fun GifsView(
     stickerRepository: StickerRepository
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var debouncedSearchQuery by remember { mutableStateOf("") }
     var savedGifs by remember { mutableStateOf<List<GifModel>>(emptyList()) }
     var searchResults by remember { mutableStateOf<List<GifModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -65,7 +66,17 @@ fun GifsView(
         if (searchQuery.isNotEmpty()) {
             isLoading = true
             delay(300)
-            searchResults = stickerRepository.searchGifs(searchQuery)
+            debouncedSearchQuery = searchQuery
+        } else {
+            debouncedSearchQuery = ""
+            searchResults = emptyList()
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(debouncedSearchQuery) {
+        if (debouncedSearchQuery.isNotEmpty()) {
+            searchResults = stickerRepository.searchGifs(debouncedSearchQuery)
             isLoading = false
         } else {
             searchResults = emptyList()

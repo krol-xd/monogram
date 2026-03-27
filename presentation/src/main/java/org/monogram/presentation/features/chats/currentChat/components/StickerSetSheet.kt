@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.monogram.domain.models.StickerSetModel
@@ -32,6 +33,7 @@ import org.monogram.domain.models.StickerType
 import org.monogram.domain.repository.StickerRepository
 import org.monogram.presentation.R
 import org.monogram.presentation.features.stickers.ui.view.StickerImage
+import org.monogram.presentation.features.stickers.ui.view.StickerSkeleton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,7 +140,7 @@ fun StickerSetSheet(
                         var thumbPath by remember { mutableStateOf(thumb.path) }
                         LaunchedEffect(thumb.id) {
                             if (thumb.path == null) {
-                                stickerRepository.getStickerFile(thumb.id).collect { thumbPath = it }
+                                thumbPath = stickerRepository.getStickerFile(thumb.id).firstOrNull()
                             }
                         }
                         Box(
@@ -148,10 +150,14 @@ fun StickerSetSheet(
                                 .background(MaterialTheme.colorScheme.surfaceContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            StickerImage(
-                                path = thumbPath,
-                                modifier = Modifier.size(40.dp)
-                            )
+                            if (thumbPath.isNullOrEmpty()) {
+                                StickerSkeleton(modifier = Modifier.size(40.dp))
+                            } else {
+                                StickerImage(
+                                    path = thumbPath,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -178,11 +184,7 @@ fun StickerSetSheet(
 
                         LaunchedEffect(sticker.id, sticker.path) {
                             if (sticker.path == null) {
-                                stickerRepository.getStickerFile(sticker.id).collect { newPath ->
-                                    if (newPath != null) {
-                                        currentPath = newPath
-                                    }
-                                }
+                                currentPath = stickerRepository.getStickerFile(sticker.id).firstOrNull()
                             } else {
                                 currentPath = sticker.path
                             }
@@ -201,10 +203,14 @@ fun StickerSetSheet(
                                 .padding(4.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            StickerImage(
-                                path = currentPath,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                            if (currentPath.isNullOrEmpty()) {
+                                StickerSkeleton(modifier = Modifier.fillMaxSize())
+                            } else {
+                                StickerImage(
+                                    path = currentPath,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                         }
                     }
                 }
