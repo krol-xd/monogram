@@ -32,6 +32,7 @@ import org.monogram.domain.repository.MessageRepository
 import org.monogram.domain.repository.UserRepository
 import org.monogram.presentation.core.util.CryptoManager
 import org.monogram.presentation.features.webapp.components.*
+import java.util.*
 import kotlin.math.max
 
 private const val TAG = "MiniAppLog"
@@ -56,6 +57,13 @@ fun MiniAppViewer(
     val userRepository: UserRepository = koinInject()
     val isDark = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
+    val currentUser by userRepository.currentUserFlow.collectAsState()
+    val webAppLanguage = remember(currentUser?.languageCode) {
+        currentUser?.languageCode
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: Locale.getDefault().toLanguageTag()
+    }
 
     val themeParams = remember(colorScheme, isDark) {
         ThemeParams(
@@ -380,6 +388,7 @@ fun MiniAppViewer(
 
                             MiniAppWebView(
                                 url = state.currentUrl,
+                                acceptLanguage = webAppLanguage,
                                 themeParams = state.themeParams,
                                 host = state.createHost(secureStorage),
                                 onWebViewCreated = { wv, proxy ->
