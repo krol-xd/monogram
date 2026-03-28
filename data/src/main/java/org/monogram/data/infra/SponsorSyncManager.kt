@@ -98,26 +98,35 @@ class SponsorSyncManager(
             val oldIds = sponsorDao.getAllIds().toSet()
 
             val now = System.currentTimeMillis()
-            if (parsedIds.isEmpty()) {
-                sponsorDao.clearAll()
-            } else {
-                sponsorDao.insertAll(parsedIds.map { userId ->
-                    SponsorEntity(
-                        userId = userId,
-                        sourceChannelId = SPONSOR_CHANNEL_ID,
-                        updatedAt = now
-                    )
-                })
-                sponsorDao.deleteNotIn(parsedIds.toList())
+            val actualIds = when {
+                parsedIds.isEmpty() && oldIds.isNotEmpty() -> {
+                    Log.w(TAG, "Parsed empty sponsor list, keeping existing ${oldIds.size} ids")
+                    oldIds
+                }
+                parsedIds.isEmpty() -> {
+                    sponsorDao.clearAll()
+                    emptySet()
+                }
+                else -> {
+                    sponsorDao.insertAll(parsedIds.map { userId ->
+                        SponsorEntity(
+                            userId = userId,
+                            sourceChannelId = SPONSOR_CHANNEL_ID,
+                            updatedAt = now
+                        )
+                    })
+                    sponsorDao.deleteNotIn(parsedIds.toList())
+                    parsedIds
+                }
             }
 
-            updateSponsorIds(parsedIds)
+            updateSponsorIds(actualIds)
 
-            val added = parsedIds - oldIds
-            val removed = oldIds - parsedIds
+            val added = actualIds - oldIds
+            val removed = oldIds - actualIds
             Log.d(
                 TAG,
-                "Sponsor sync finished: messages=${messages.totalCount}, ids=${parsedIds.size}, added=${added.size}, removed=${removed.size}"
+                "Sponsor sync finished: messages=${messages.totalCount}, ids=${actualIds.size}, added=${added.size}, removed=${removed.size}"
             )
         } catch (t: Throwable) {
             Log.e(TAG, "Sponsor sync failed", t)
