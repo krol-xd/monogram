@@ -60,7 +60,8 @@ class UserRepositoryImpl(
             updates.user.collect { update ->
                 userLocal.putUser(update.user)
                 if (userLocal is RoomUserLocalDataSource) {
-                    userLocal.saveUser(update.user.toEntity())
+                    val personalAvatarPath = resolveStoredPersonalAvatarPath(update.user.id)
+                    userLocal.saveUser(update.user.toEntity(personalAvatarPath))
                 }
                 if (update.user.id == currentUserId) refreshCurrentUser()
                 _userUpdateFlow.emit(update.user.id)
@@ -71,7 +72,8 @@ class UserRepositoryImpl(
                 userLocal.getUser(update.userId)?.let { cached ->
                     cached.status = update.status
                     if (userLocal is RoomUserLocalDataSource) {
-                        userLocal.saveUser(cached.toEntity())
+                        val personalAvatarPath = resolveStoredPersonalAvatarPath(cached.id)
+                        userLocal.saveUser(cached.toEntity(personalAvatarPath))
                     }
                     if (update.userId == currentUserId) refreshCurrentUser()
                     _userUpdateFlow.emit(update.userId)
@@ -162,7 +164,8 @@ class UserRepositoryImpl(
         currentUserId = user.id
         userLocal.putUser(user)
         if (userLocal is RoomUserLocalDataSource) {
-            userLocal.saveUser(user.toEntity())
+            val personalAvatarPath = resolveStoredPersonalAvatarPath(user.id)
+            userLocal.saveUser(user.toEntity(personalAvatarPath))
         }
         val model = mapUserModel(user, userLocal.getUserFullInfo(user.id))
         _currentUserFlow.update { model }
@@ -190,7 +193,8 @@ class UserRepositoryImpl(
                 fetchAndCacheUser(userId)?.also {
                     userLocal.putUser(it)
                     if (userLocal is RoomUserLocalDataSource) {
-                        userLocal.saveUser(it.toEntity())
+                        val personalAvatarPath = resolveStoredPersonalAvatarPath(it.id)
+                        userLocal.saveUser(it.toEntity(personalAvatarPath))
                     }
                 }
             }
@@ -209,7 +213,8 @@ class UserRepositoryImpl(
         val user = userLocal.getUser(userId) ?: fetchAndCacheUser(userId)?.also {
             userLocal.putUser(it)
             if (userLocal is RoomUserLocalDataSource) {
-                userLocal.saveUser(it.toEntity())
+                val personalAvatarPath = resolveStoredPersonalAvatarPath(it.id)
+                userLocal.saveUser(it.toEntity(personalAvatarPath))
             }
         } ?: return null
 
@@ -232,6 +237,7 @@ class UserRepositoryImpl(
                 fetchAndCacheUserFullInfo(userId)?.also {
                     userLocal.putUserFullInfo(userId, it)
                     userLocal.saveFullInfoEntity(it.toEntity(userId))
+                    syncUserPersonalAvatarPath(userId, it)
                 }
             }
         }
@@ -330,6 +336,7 @@ class UserRepositoryImpl(
                     } ?: fetchAndCacheUserFullInfo(userId)?.also {
                         userLocal.putUserFullInfo(userId, it)
                         userLocal.saveFullInfoEntity(it.toEntity(userId))
+                        syncUserPersonalAvatarPath(userId, it)
                     }
                     fullInfo?.mapUserFullInfoToChat() ?: dbFullInfo?.toDomain()
                 }
@@ -363,8 +370,29 @@ class UserRepositoryImpl(
         } ?: fetchAndCacheUserFullInfo(userId)?.also {
             userLocal.putUserFullInfo(userId, it)
             userLocal.saveFullInfoEntity(it.toEntity(userId))
+            syncUserPersonalAvatarPath(userId, it)
         }
         return fullInfo?.mapUserFullInfoToChat()
+    }
+
+    private suspend fun resolveStoredPersonalAvatarPath(userId: Long): String? {
+        val cachedFullInfo = userLocal.getUserFullInfo(userId)
+        val cachedPath = cachedFullInfo?.extractPersonalAvatarPath()
+        if (!cachedPath.isNullOrBlank()) return cachedPath
+        return userLocal.getFullInfoEntity(userId)?.personalPhotoPath?.ifBlank { null }
+    }
+
+    private suspend fun syncUserPersonalAvatarPath(userId: Long, fullInfo: TdApi.UserFullInfo) {
+        val roomUserLocal = userLocal as? RoomUserLocalDataSource ?: return
+        val personalAvatarPath = fullInfo.extractPersonalAvatarPath() ?: return
+        val existing = roomUserLocal.loadUser(userId) ?: return
+        if (existing.personalAvatarPath == personalAvatarPath) return
+        roomUserLocal.saveUser(existing.copy(personalAvatarPath = personalAvatarPath))
+    }
+
+    private fun TdApi.UserFullInfo.extractPersonalAvatarPath(): String? {
+        return personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
+            ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
     }
 
     private suspend fun fetchAndCacheUser(userId: Long): TdApi.User? {
@@ -697,7 +725,7 @@ class UserRepositoryImpl(
         return if (encoded.isEmpty()) null else encoded.joinToString("|")
     }
 
-    private fun TdApi.User.toEntity(): org.monogram.data.db.model.UserEntity {
+    private fun TdApi.User.toEntity(personalAvatarPath: String?): org.monogram.data.db.model.UserEntity {
         val usernamesData = buildString {
             append(usernames?.activeUsernames?.joinToString("|").orEmpty())
             append('\n')
@@ -728,7 +756,7 @@ class UserRepositoryImpl(
             lastName = lastName.ifEmpty { null },
             phoneNumber = phoneNumber.ifEmpty { null },
             avatarPath = profilePhoto?.small?.local?.path?.ifEmpty { null },
-            personalAvatarPath = null,
+            personalAvatarPath = personalAvatarPath,
             isPremium = isPremium,
             isVerified = verificationStatus?.isVerified ?: false,
             isSupport = isSupport,

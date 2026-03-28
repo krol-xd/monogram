@@ -944,15 +944,33 @@ class MessageMapper(
                     ?: sizes.find { it.type == "m" }
                     ?: sizes.getOrNull(sizes.size / 2)
                     ?: sizes.lastOrNull()
+                val thumbnailSize = sizes.find { it.type == "m" }
+                    ?: sizes.find { it.type == "s" }
+                    ?: sizes.firstOrNull()
 
                 val photoFile = photoSize?.photo?.let { getUpdatedFile(it) }
+                val thumbnailFile = thumbnailSize?.photo?.let { getUpdatedFile(it) }
 
                 val path = findBestAvailablePath(photoFile, sizes)
+                val thumbnailPath = resolveLocalFilePath(thumbnailFile)
 
                 if (photoFile != null) {
                     fileApi.registerFileForMessage(photoFile.id, msg.chatId, msg.id)
                     if (path == null && networkAutoDownload) {
                         fileApi.enqueueDownload(photoFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
+                    }
+                }
+                if (thumbnailFile != null) {
+                    fileApi.registerFileForMessage(thumbnailFile.id, msg.chatId, msg.id)
+                    if (thumbnailPath == null && networkAutoDownload) {
+                        fileApi.enqueueDownload(
+                            thumbnailFile.id,
+                            1,
+                            TdMessageRemoteDataSource.DownloadType.DEFAULT,
+                            0,
+                            0,
+                            false
+                        )
                     }
                 }
                 val isDownloading = photoFile?.local?.isDownloadingActive ?: false
@@ -963,6 +981,7 @@ class MessageMapper(
 
                 MessageContent.Photo(
                     path = path,
+                    thumbnailPath = thumbnailPath,
                     width = photoSize?.width ?: 0,
                     height = photoSize?.height ?: 0,
                     caption = c.caption.text,
@@ -983,10 +1002,11 @@ class MessageMapper(
                 fileApi.registerFileForMessage(videoFile.id, msg.chatId, msg.id)
 
                 val thumbFile = video.thumbnail?.file?.let { getUpdatedFile(it) }
+                val thumbnailPath = resolveLocalFilePath(thumbFile)
 
                 if (thumbFile != null) {
                     fileApi.registerFileForMessage(thumbFile.id, msg.chatId, msg.id)
-                    if (!isValidPath(thumbFile.local.path) && networkAutoDownload) {
+                    if (thumbnailPath == null && networkAutoDownload) {
                         fileApi.enqueueDownload(thumbFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
                     }
                 }
@@ -1003,6 +1023,7 @@ class MessageMapper(
 
                 MessageContent.Video(
                     path = path,
+                    thumbnailPath = thumbnailPath,
                     width = video.width,
                     height = video.height,
                     duration = video.duration,
@@ -1404,7 +1425,9 @@ class MessageMapper(
         val text: String,
         val meta: String?,
         val fileId: Int = 0,
-        val path: String? = null
+        val path: String? = null,
+        val thumbnailPath: String? = null,
+        val minithumbnail: ByteArray? = null
     )
 
     private data class CachedReplyPreview(
@@ -1446,6 +1469,8 @@ class MessageMapper(
             contentMeta = content.meta,
             mediaFileId = content.fileId,
             mediaPath = content.path,
+            mediaThumbnailPath = content.thumbnailPath,
+            minithumbnail = content.minithumbnail,
             date = resolveMessageDate(msg),
             isOutgoing = msg.isOutgoing,
             isRead = false,
@@ -1478,14 +1503,19 @@ class MessageMapper(
                     ?: sizes.find { it.type == "m" }
                     ?: sizes.getOrNull(sizes.size / 2)
                     ?: sizes.lastOrNull()
+                val thumbnail = sizes.find { it.type == "m" }
+                    ?: sizes.find { it.type == "s" }
                 val fileId = best?.photo?.id ?: 0
                 val path = best?.photo?.local?.path?.takeIf { it.isNotBlank() }
+                val thumbnailPath = thumbnail?.photo?.local?.path?.takeIf { it.isNotBlank() }
                 CachedMessageContent(
                     "photo",
                     content.caption?.text.orEmpty(),
                     encodeMeta(best?.width ?: 0, best?.height ?: 0),
                     fileId = fileId,
-                    path = path
+                    path = path,
+                    thumbnailPath = thumbnailPath,
+                    minithumbnail = content.photo.minithumbnail?.data
                 )
             }
 
@@ -1503,7 +1533,9 @@ class MessageMapper(
                         if (content.video.supportsStreaming) 1 else 0
                     ),
                     fileId = fileId,
-                    path = path
+                    path = path,
+                    thumbnailPath = content.video.thumbnail?.file?.local?.path?.takeIf { it.isNotBlank() },
+                    minithumbnail = content.video.minithumbnail?.data
                 )
             }
 
@@ -1679,10 +1711,12 @@ class MessageMapper(
                 registerCachedFile(fileId, entity.chatId, entity.id)
                 MessageContent.Photo(
                     path = resolveCachedPath(fileId, mediaPath),
+                    thumbnailPath = entity.mediaThumbnailPath?.takeIf { isValidPath(it) },
                     width = meta.getOrNull(0)?.toIntOrNull() ?: 0,
                     height = meta.getOrNull(1)?.toIntOrNull() ?: 0,
                     caption = entity.content,
-                    fileId = fileId
+                    fileId = fileId,
+                    minithumbnail = entity.minithumbnail
                 )
             }
 
@@ -1696,12 +1730,17 @@ class MessageMapper(
                 registerCachedFile(fileId, entity.chatId, entity.id)
                 MessageContent.Video(
                     path = resolveCachedPath(fileId, mediaPath),
+                    thumbnailPath = (
+                            entity.mediaThumbnailPath?.takeIf { isValidPath(it) }
+                                ?: meta.getOrNull(3)
+                            )?.takeIf { isValidPath(it) },
                     width = meta.getOrNull(0)?.toIntOrNull() ?: 0,
                     height = meta.getOrNull(1)?.toIntOrNull() ?: 0,
                     duration = meta.getOrNull(2)?.toIntOrNull() ?: 0,
                     caption = entity.content,
                     fileId = fileId,
-                    supportsStreaming = supportsStreaming
+                    supportsStreaming = supportsStreaming,
+                    minithumbnail = entity.minithumbnail
                 )
             }
 

@@ -7,11 +7,7 @@ import org.drinkless.tdlib.TdApi
 import org.monogram.core.DispatcherProvider
 import org.monogram.core.ScopeProvider
 import org.monogram.data.chats.ChatCache
-import org.monogram.data.db.dao.ChatDao
-import org.monogram.data.db.dao.ChatFullInfoDao
-import org.monogram.data.db.dao.MessageDao
-import org.monogram.data.db.dao.UserDao
-import org.monogram.data.db.dao.UserFullInfoDao
+import org.monogram.data.db.dao.*
 import org.monogram.data.db.model.ChatEntity
 import org.monogram.data.db.model.UserEntity
 import org.monogram.data.gateway.TelegramGateway
@@ -83,7 +79,8 @@ class OfflineWarmup(
             if (cachedUser == null || now - cachedUser.createdAt > ONE_DAY_MS) {
                 val user = runCatching { gateway.execute(TdApi.GetUser(userId)) as? TdApi.User }.getOrNull()
                 if (user != null) {
-                    userDao.insertUser(user.toUserEntity())
+                    val personalAvatarPath = existingFullInfos[userId]?.personalPhotoPath?.ifBlank { null }
+                    userDao.insertUser(user.toUserEntity(personalAvatarPath))
                     chatCache.putUser(user)
                     hasUser = true
                 } else if (cachedUser == null) {
@@ -103,6 +100,14 @@ class OfflineWarmup(
                 }.getOrNull()
                 if (fullInfo != null) {
                     userFullInfoDao.insertUserFullInfo(fullInfo.toEntity(userId))
+                    val personalAvatarPath = fullInfo.extractPersonalAvatarPath()
+                    if (!personalAvatarPath.isNullOrBlank()) {
+                        userDao.getUser(userId)?.let { existing ->
+                            if (existing.personalAvatarPath != personalAvatarPath) {
+                                userDao.insertUser(existing.copy(personalAvatarPath = personalAvatarPath))
+                            }
+                        }
+                    }
                     chatCache.putUserFullInfo(userId, fullInfo)
                 }
             }
@@ -188,7 +193,7 @@ class OfflineWarmup(
         }
     }
 
-    private fun TdApi.User.toUserEntity(): UserEntity {
+    private fun TdApi.User.toUserEntity(personalAvatarPath: String?): UserEntity {
         val usernamesData = buildString {
             append(usernames?.activeUsernames?.joinToString("|").orEmpty())
             append('\n')
@@ -219,7 +224,7 @@ class OfflineWarmup(
             lastName = lastName.ifEmpty { null },
             phoneNumber = phoneNumber.ifEmpty { null },
             avatarPath = profilePhoto?.small?.local?.path?.ifEmpty { null },
-            personalAvatarPath = null,
+            personalAvatarPath = personalAvatarPath,
             isPremium = isPremium,
             isVerified = verificationStatus?.isVerified ?: false,
             isSupport = isSupport,
@@ -237,6 +242,11 @@ class OfflineWarmup(
             lastSeen = (status as? TdApi.UserStatusOffline)?.wasOnline?.toLong() ?: 0L,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    private fun TdApi.UserFullInfo.extractPersonalAvatarPath(): String? {
+        return personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
+            ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
     }
 
     private companion object {

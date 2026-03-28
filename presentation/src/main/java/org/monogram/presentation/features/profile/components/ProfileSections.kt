@@ -42,6 +42,107 @@ import org.monogram.presentation.features.chats.currentChat.components.VideoPlay
 import org.monogram.presentation.features.profile.ProfileComponent
 import java.util.*
 
+@Composable
+fun ProfileInfoSectionSkeleton(itemCount: Int = 4) {
+    val shimmer = rememberShimmerBrush()
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(4) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(shimmer)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(10.dp)
+                            .fillMaxWidth(0.7f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(shimmer)
+                    )
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .height(18.dp)
+            .fillMaxWidth(0.35f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(shimmer)
+    )
+    Spacer(modifier = Modifier.height(10.dp))
+
+    repeat(itemCount) { index ->
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(
+                topStart = if (index == 0) 24.dp else 4.dp,
+                topEnd = if (index == 0) 24.dp else 4.dp,
+                bottomStart = if (index == itemCount - 1) 24.dp else 4.dp,
+                bottomEnd = if (index == itemCount - 1) 24.dp else 4.dp
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(shimmer)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .height(14.dp)
+                            .fillMaxWidth(0.48f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(shimmer)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(12.dp)
+                            .fillMaxWidth(0.72f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(shimmer)
+                    )
+                }
+            }
+        }
+        if (index < itemCount - 1) {
+            Spacer(modifier = Modifier.height(2.dp))
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileInfoSection(

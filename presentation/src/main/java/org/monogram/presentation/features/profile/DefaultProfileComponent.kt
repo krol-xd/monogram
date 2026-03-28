@@ -46,6 +46,7 @@ class DefaultProfileComponent(
     private val PAGE_SIZE = 50
     private var membersOffset = 0
     private var isCurrentlyLoadingMedia = false
+    private val canLoadMoreMediaByFilter = mutableMapOf<ProfileMediaFilter, Boolean>()
 
     init {
         loadData()
@@ -155,7 +156,7 @@ class DefaultProfileComponent(
             }
 
             if (fileId != 0) {
-                messageRepository.downloadFile(fileId, priority = 32)
+                messageRepository.downloadFile(fileId, priority = 16)
                 var attempts = 0
 
                 while (attempts < 60) {
@@ -211,7 +212,7 @@ class DefaultProfileComponent(
 
                 if (it.fullScreenImages != null && !it.isViewingProfilePhotos) {
                     val allPhotos = updatedMedia.filter { it.content is MessageContent.Photo }
-                    val paths = allPhotos.mapNotNull { (it.content as? MessageContent.Photo)?.path }
+                    val paths = allPhotos.mapNotNull { (it.content as? MessageContent.Photo)?.displayPath() }
 
                     nextState = nextState.copy(
                         fullScreenImages = paths
@@ -244,6 +245,8 @@ class DefaultProfileComponent(
         }
     }
 
+    private fun MessageContent.Photo.displayPath(): String? = path ?: thumbnailPath
+
     private fun loadMembersNextPage() {
         if (_state.value.isLoadingMembers || !_state.value.canLoadMoreMembers) return
 
@@ -273,7 +276,7 @@ class DefaultProfileComponent(
     }
 
     private fun loadMediaNextPage(isFirstLoad: Boolean) {
-        if (isCurrentlyLoadingMedia || (!isFirstLoad && !_state.value.canLoadMoreMedia)) return
+        if (isCurrentlyLoadingMedia) return
         val state = _state.value
         val isGroup = state.chat?.let { it.isGroup || it.isChannel } ?: false
         val tabIndex = state.selectedTabIndex
@@ -289,6 +292,9 @@ class DefaultProfileComponent(
             5 -> ProfileMediaFilter.GIFS
             else -> return
         }
+        val canLoadMoreForFilter = canLoadMoreMediaByFilter[filter] ?: true
+        if (!isFirstLoad && !canLoadMoreForFilter) return
+
         val lastId = if (isFirstLoad) 0L else getLastMessageIdForFilter(state, filter)
 
         scope.launch {
@@ -309,6 +315,7 @@ class DefaultProfileComponent(
                 )
 
                 if (messages.isEmpty()) {
+                    canLoadMoreMediaByFilter[filter] = false
                     _state.update { it.copy(canLoadMoreMedia = false) }
                 } else {
                     _state.update { appendMessagesToState(it, filter, messages) }
@@ -345,6 +352,7 @@ class DefaultProfileComponent(
         newMessages: List<MessageModel>
     ): ProfileComponent.State {
         val canLoadMore = newMessages.size >= PAGE_SIZE
+        canLoadMoreMediaByFilter[filter] = canLoadMore
 
         val nextState = when (filter) {
             ProfileMediaFilter.MEDIA -> currentState.copy(
@@ -389,16 +397,29 @@ class DefaultProfileComponent(
     override fun onTabSelected(index: Int) {
         if (_state.value.selectedTabIndex == index) return
 
+        val currentState = _state.value
+        val isGroup = currentState.chat?.let { it.isGroup || it.isChannel } ?: false
+        val selectedFilter = tabFilter(index, isGroup)
+        val tabCanLoadMore = selectedFilter?.let { canLoadMoreMediaByFilter[it] ?: true } ?: true
+        val isTabEmpty = when (selectedFilter) {
+            ProfileMediaFilter.MEDIA -> currentState.mediaMessages.isEmpty()
+            ProfileMediaFilter.FILES -> currentState.fileMessages.isEmpty()
+            ProfileMediaFilter.AUDIO -> currentState.audioMessages.isEmpty()
+            ProfileMediaFilter.VOICE -> currentState.voiceMessages.isEmpty()
+            ProfileMediaFilter.LINKS -> currentState.linkMessages.isEmpty()
+            ProfileMediaFilter.GIFS -> currentState.gifMessages.isEmpty()
+            null -> false
+        }
+
         _state.update {
             it.copy(
                 selectedTabIndex = index,
-                canLoadMoreMedia = true,
-                isLoadingMedia = true,
+                canLoadMoreMedia = tabCanLoadMore,
+                isLoadingMedia = isTabEmpty,
                 isLoadingMoreMedia = false
             )
         }
 
-        val isGroup = _state.value.chat?.let { it.isGroup || it.isChannel } ?: false
         if (isGroup && index == 1) {
             if (_state.value.members.isEmpty()) {
                 loadMembersNextPage()
@@ -406,22 +427,25 @@ class DefaultProfileComponent(
                  _state.update { it.copy(isLoadingMedia = false) }
             }
         } else {
-            val filterIndex = if (isGroup && index > 1) index - 1 else index
-            val isEmpty = when (filterIndex) {
-                0 -> _state.value.mediaMessages.isEmpty()
-                1 -> _state.value.fileMessages.isEmpty()
-                2 -> _state.value.audioMessages.isEmpty()
-                3 -> _state.value.voiceMessages.isEmpty()
-                4 -> _state.value.linkMessages.isEmpty()
-                5 -> _state.value.gifMessages.isEmpty()
-                else -> false
-            }
-
-            if (isEmpty) {
+            if (isTabEmpty) {
                 loadMediaNextPage(isFirstLoad = true)
             } else {
                 _state.update { it.copy(isLoadingMedia = false) }
             }
+        }
+    }
+
+    private fun tabFilter(index: Int, isGroup: Boolean): ProfileMediaFilter? {
+        if (isGroup && index == 1) return null
+        val mediaTypeIndex = if (isGroup && index > 1) index - 1 else index
+        return when (mediaTypeIndex) {
+            0 -> ProfileMediaFilter.MEDIA
+            1 -> ProfileMediaFilter.FILES
+            2 -> ProfileMediaFilter.AUDIO
+            3 -> ProfileMediaFilter.VOICE
+            4 -> ProfileMediaFilter.LINKS
+            5 -> ProfileMediaFilter.GIFS
+            else -> null
         }
     }
 
@@ -462,10 +486,19 @@ class DefaultProfileComponent(
                             val fileInfo = messageRepository.getFileInfo(bigFileId)
                             if (fileInfo?.local?.isDownloadingCompleted == true && fileInfo.local.path.isNotEmpty()) {
                                 withContext(Dispatchers.Main) {
+                                    onFileDownloaded(bigFileId, fileInfo.local.path)
                                     val currentImages = _state.value.fullScreenImages
                                     if (currentImages != null) {
-                                        val allPhotos = _state.value.mediaMessages.filter { it.content is MessageContent.Photo }
-                                        val index = allPhotos.indexOfFirst { it.id == message.id }
+                                        val viewerItems = _state.value.mediaMessages
+                                            .asSequence()
+                                            .filter { it.content is MessageContent.Photo }
+                                            .mapNotNull {
+                                                val photo =
+                                                    it.content as? MessageContent.Photo ?: return@mapNotNull null
+                                                photo.displayPath()?.let { path -> it.id to path }
+                                            }
+                                            .toList()
+                                        val index = viewerItems.indexOfFirst { it.first == message.id }
 
                                         if (index != -1 && index < currentImages.size) {
                                             val newImages = currentImages.toMutableList()
@@ -481,19 +514,24 @@ class DefaultProfileComponent(
                     }
                 }
 
-                content.path?.let { clickedPath ->
-                    val mediaList = _state.value.mediaMessages
-                    val allPhotos = mediaList.filter { it.content is MessageContent.Photo }
+                val viewerItems = _state.value.mediaMessages
+                    .asSequence()
+                    .filter { it.content is MessageContent.Photo }
+                    .mapNotNull {
+                        val photo = it.content as? MessageContent.Photo ?: return@mapNotNull null
+                        val displayPath = photo.displayPath() ?: return@mapNotNull null
+                        Triple(it.id, displayPath, photo.caption)
+                    }
+                    .toList()
 
-                    val paths = allPhotos.mapNotNull { (it.content as? MessageContent.Photo)?.path }
-                    val captions = allPhotos.map { (it.content as? MessageContent.Photo)?.caption }
-
-                    val startIndex = paths.indexOf(clickedPath).takeIf { it != -1 } ?: 0
+                if (viewerItems.isNotEmpty()) {
+                    val startIndex = viewerItems.indexOfFirst { it.first == message.id }
+                        .takeIf { it != -1 } ?: 0
 
                     _state.update {
                         it.copy(
-                            fullScreenImages = paths,
-                            fullScreenCaptions = captions,
+                            fullScreenImages = viewerItems.map { item -> item.second },
+                            fullScreenCaptions = viewerItems.map { item -> item.third },
                             fullScreenStartIndex = startIndex,
                             isViewingProfilePhotos = false
                         )

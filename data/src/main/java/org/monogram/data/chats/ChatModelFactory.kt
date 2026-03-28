@@ -72,7 +72,7 @@ class ChatModelFactory(
                 cache.basicGroupFullInfoCache[type.basicGroupId]?.let { fullInfo ->
                     description = fullInfo.description
                     inviteLink = fullInfo.inviteLink?.inviteLink
-                    personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
+                    personalAvatarPath = null
                 } ?: lazyLoad(cache.pendingBasicGroupFullInfo, type.basicGroupId) {
                     if (type.basicGroupId == 0L) return@lazyLoad
                     val result = gateway.execute(TdApi.GetBasicGroupFullInfo(type.basicGroupId))
@@ -110,7 +110,7 @@ class ChatModelFactory(
                     cache.supergroupFullInfoCache[type.supergroupId]?.let { fullInfo ->
                         description = fullInfo.description
                         inviteLink = fullInfo.inviteLink?.inviteLink
-                        personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
+                        personalAvatarPath = null
                     } ?: lazyLoad(cache.pendingSupergroupFullInfo, type.supergroupId) {
                         if (type.supergroupId == 0L) return@lazyLoad
                         val result = gateway.execute(TdApi.GetSupergroupFullInfo(type.supergroupId))
@@ -138,7 +138,7 @@ class ChatModelFactory(
 
                 cache.userFullInfoCache[type.userId]?.let { fullInfo ->
                     description = fullInfo.bio?.text
-                    personalAvatarPath = resolvePhotoPath(fullInfo.photo, chat.id)
+                    personalAvatarPath = resolvePhotoPath(fullInfo.personalPhoto, chat.id)
                 } ?: run {
                     if (!isUserFullInfoTemporarilyMissing(type.userId)) {
                         lazyLoad(cache.pendingUserFullInfo, type.userId) {

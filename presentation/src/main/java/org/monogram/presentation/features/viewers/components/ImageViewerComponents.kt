@@ -339,7 +339,7 @@ fun ThumbnailStrip(
     ) {
         itemsIndexed(
             images,
-            key = { _, item -> item.hashCode() }
+            key = { index, item -> "thumb_${index}_${item.hashCode()}" }
         ) { index, image ->
             val isSelected = pagerState.currentPage == index
 

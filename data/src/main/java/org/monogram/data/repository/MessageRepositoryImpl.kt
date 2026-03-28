@@ -696,21 +696,41 @@ class MessageRepositoryImpl(
     }
 
     private suspend fun triggerFileDownload(msg: TdApi.Message) {
-        val file: TdApi.File? = when (val content = msg.content) {
+        val lowQualityFile = when (val content = msg.content) {
             is TdApi.MessagePhoto -> {
-                content.photo.sizes.firstOrNull()?.photo
+                content.photo.sizes.find { it.type == "m" }?.photo
+                    ?: content.photo.sizes.find { it.type == "s" }?.photo
+                    ?: content.photo.sizes.firstOrNull()?.photo
             }
-            is TdApi.MessageVideo -> {
-                content.video.thumbnail?.file
-            }
-            is TdApi.MessageDocument -> {
-                content.document.thumbnail?.file
-            }
+
+            is TdApi.MessageVideo -> content.video.thumbnail?.file
+            is TdApi.MessageDocument -> content.document.thumbnail?.file
             is TdApi.MessageAnimation -> content.animation.thumbnail?.file
             else -> null
         }
+
+        if (lowQualityFile != null && lowQualityFile.local.path.isEmpty()) {
+            fileDataSource.downloadFile(lowQualityFile.id, 32, 0, 0, false)
+        }
+
+        triggerFullQualityDownload(msg)
+    }
+
+    private suspend fun triggerFullQualityDownload(msg: TdApi.Message) {
+        val file = when (val content = msg.content) {
+            is TdApi.MessagePhoto -> {
+                content.photo.sizes.find { it.type == "x" }?.photo
+                    ?: content.photo.sizes.find { it.type == "m" }?.photo
+                    ?: content.photo.sizes.lastOrNull()?.photo
+            }
+
+            is TdApi.MessageVideo -> content.video.video
+            is TdApi.MessageAnimation -> content.animation.animation
+            else -> null
+        }
+
         if (file != null && file.local.path.isEmpty()) {
-            fileDataSource.downloadFile(file.id, 32, 0, 0, false)
+            fileDataSource.downloadFile(file.id, 16, 0, 0, false)
         }
     }
 

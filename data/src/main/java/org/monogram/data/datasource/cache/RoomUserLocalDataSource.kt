@@ -25,7 +25,9 @@ class RoomUserLocalDataSource(
 
     override suspend fun putUser(user: TdApi.User) {
         users[user.id] = user
-        userDao.insertUser(user.toEntity())
+        val personalAvatarPath = fullInfos[user.id]?.extractPersonalAvatarPath()
+            ?: userFullInfoDao.getUserFullInfo(user.id)?.personalPhotoPath?.ifBlank { null }
+        userDao.insertUser(user.toEntity(personalAvatarPath))
     }
 
     override suspend fun getUserFullInfo(userId: Long): TdApi.UserFullInfo? {
@@ -38,6 +40,14 @@ class RoomUserLocalDataSource(
     override suspend fun putUserFullInfo(userId: Long, info: TdApi.UserFullInfo) {
         fullInfos[userId] = info
         userFullInfoDao.insertUserFullInfo(info.toEntity(userId))
+        val personalAvatarPath = info.extractPersonalAvatarPath()
+        if (!personalAvatarPath.isNullOrBlank()) {
+            userDao.getUser(userId)?.let { existing ->
+                if (existing.personalAvatarPath != personalAvatarPath) {
+                    userDao.insertUser(existing.copy(personalAvatarPath = personalAvatarPath))
+                }
+            }
+        }
     }
 
     override suspend fun getAllUsers(): Collection<TdApi.User> {
@@ -72,7 +82,7 @@ class RoomUserLocalDataSource(
         userFullInfoDao.clearAll()
     }
 
-    private fun TdApi.User.toEntity(): UserEntity {
+    private fun TdApi.User.toEntity(personalAvatarPath: String?): UserEntity {
         val usernamesData = buildString {
             append(usernames?.activeUsernames?.joinToString("|").orEmpty())
             append('\n')
@@ -96,8 +106,6 @@ class RoomUserLocalDataSource(
             is TdApi.EmojiStatusTypeUpgradedGift -> type.modelCustomEmojiId
             else -> 0L
         }
-
-        val personalAvatarPath = null
 
         return UserEntity(
             id = id,
@@ -123,5 +131,10 @@ class RoomUserLocalDataSource(
             lastSeen = (status as? TdApi.UserStatusOffline)?.wasOnline?.toLong() ?: 0L,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    private fun TdApi.UserFullInfo.extractPersonalAvatarPath(): String? {
+        return personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
+            ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
     }
 }

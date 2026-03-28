@@ -73,6 +73,7 @@ sealed interface MessageContent {
 
     data class Photo(
         val path: String?,
+        val thumbnailPath: String? = null,
         val width: Int,
         val height: Int,
         val caption: String = "",
@@ -102,6 +103,7 @@ sealed interface MessageContent {
             if (fileId != other.fileId) return false
             if (hasSpoiler != other.hasSpoiler) return false
             if (path != other.path) return false
+            if (thumbnailPath != other.thumbnailPath) return false
             if (caption != other.caption) return false
             if (entities != other.entities) return false
             if (!minithumbnail.contentEquals(other.minithumbnail)) return false
@@ -120,6 +122,7 @@ sealed interface MessageContent {
             result = 31 * result + fileId
             result = 31 * result + hasSpoiler.hashCode()
             result = 31 * result + (path?.hashCode() ?: 0)
+            result = 31 * result + (thumbnailPath?.hashCode() ?: 0)
             result = 31 * result + caption.hashCode()
             result = 31 * result + entities.hashCode()
             result = 31 * result + (minithumbnail?.contentHashCode() ?: 0)
@@ -129,6 +132,7 @@ sealed interface MessageContent {
 
     data class Video(
         val path: String?,
+        val thumbnailPath: String? = null,
         val width: Int,
         val height: Int,
         val duration: Int,
@@ -162,6 +166,7 @@ sealed interface MessageContent {
             if (supportsStreaming != other.supportsStreaming) return false
             if (hasSpoiler != other.hasSpoiler) return false
             if (path != other.path) return false
+            if (thumbnailPath != other.thumbnailPath) return false
             if (caption != other.caption) return false
             if (entities != other.entities) return false
             if (!minithumbnail.contentEquals(other.minithumbnail)) return false
@@ -182,6 +187,7 @@ sealed interface MessageContent {
             result = 31 * result + supportsStreaming.hashCode()
             result = 31 * result + hasSpoiler.hashCode()
             result = 31 * result + (path?.hashCode() ?: 0)
+            result = 31 * result + (thumbnailPath?.hashCode() ?: 0)
             result = 31 * result + caption.hashCode()
             result = 31 * result + entities.hashCode()
             result = 31 * result + (minithumbnail?.contentHashCode() ?: 0)

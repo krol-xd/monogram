@@ -122,7 +122,7 @@ fun MediaViewer(
     ) {
         HorizontalPager(
             state = pagerState,
-            key = { page -> mediaItems.getOrNull(page) ?: page },
+            key = { page -> "media_page_${page}" },
             pageSize = PageSize.Fill,
             pageSpacing = 0.dp,
             beyondViewportPageCount = 0,

@@ -24,7 +24,7 @@ import org.monogram.data.db.model.*
         StickerPathEntity::class,
         SponsorEntity::class
     ],
-    version = 24,
+    version = 25,
     exportSchema = false
 )
 abstract class MonogramDatabase : RoomDatabase() {
