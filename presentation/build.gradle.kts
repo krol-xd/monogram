@@ -110,4 +110,5 @@ dependencies {
     implementation(libs.maplibre.compose)
     implementation(libs.play.services.oss.licenses)
     implementation(libs.play.services.location)
+    testImplementation(libs.junit)
 }

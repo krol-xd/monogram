@@ -1,24 +1,55 @@
 package org.monogram.presentation.core.util
 
-import android.content.Context
-import org.monogram.presentation.R
+import org.monogram.presentation.core.util.Country.Companion.FALLBACK_LENGTH
 
+
+/**
+ * Object representation of selected country
+ *
+ * @property name country name
+ * @property code country numeric code (for example, 7 or 380)
+ * @property iso country ISO code (for example, RU, UA)
+ * @property flagEmoji Unicode emoji symbol matching this country
+ * @property mask optional mask for this number (without country code), can be `null`
+ **/
 data class Country(
     val name: String,
     val code: String,
     val iso: String,
     val flagEmoji: String,
     val mask: String? = null
-)
+) {
+    companion object {
+        private const val FALLBACK_LENGTH = 5
+        private const val MASK_CHAR = 'X'
+    }
 
+    /**
+     * Get minimum number of digits based on country mask
+     *
+     * @return number of digits according to the mask, or [FALLBACK_LENGTH], when mask is too low or empty
+     **/
+    fun getMobileNumberLength(): Int {
+        val maskChars = mask?.filter { it == MASK_CHAR }?.takeIf { it.length >= FALLBACK_LENGTH }
+        return maskChars?.length ?: FALLBACK_LENGTH
+    }
+}
+
+/**
+ * An object to get and manage countries
+ **/
 object CountryManager {
     private var countries: List<Country> = emptyList()
 
-    fun getCountries(context: Context): List<Country> {
+    /**
+     * @return list of available countries, or empty list, if no valid data present
+     **/
+    fun getCountries(): List<Country> {
         if (countries.isNotEmpty()) return countries
 
         try {
-            val inputStream = context.resources.openRawResource(R.raw.countries)
+            val inputStream = javaClass.getResourceAsStream("/countries.txt") ?: return emptyList()
+
             countries = inputStream.bufferedReader().useLines { lines ->
                 lines.mapNotNull { line ->
                     val parts = line.split(";")
@@ -47,11 +78,17 @@ object CountryManager {
         return countries
     }
 
-    fun getCountryForPhone(context: Context, phone: String): Country? {
+    /**
+     * Get country based on phone number
+     *
+     * @param phone phone to check
+     * @return [Country] object associated with this phone
+     **/
+    fun getCountryForPhone(phone: String): Country? {
         val digits = phone.filter { it.isDigit() }
         if (digits.isEmpty()) return null
 
-        val allCountries = getCountries(context)
+        val allCountries = getCountries()
 
         val matches = allCountries.filter { digits.startsWith(it.code) }
         if (matches.isEmpty()) return null
@@ -99,11 +136,11 @@ object CountryManager {
         return matches.maxByOrNull { it.code.length }
     }
 
-    fun formatPhone(context: Context, phone: String): String {
+    fun formatPhone(phone: String): String {
         val digits = phone.filter { it.isDigit() }
         if (digits.isEmpty()) return ""
 
-        val country = getCountryForPhone(context, digits) ?: return "+$digits"
+        val country = getCountryForPhone(digits) ?: return "+$digits"
         val mask = country.mask ?: return "+$digits"
 
         val phoneWithoutCode = digits.removePrefix(country.code)
