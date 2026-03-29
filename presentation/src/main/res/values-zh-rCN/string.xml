@@ -257,6 +257,7 @@
     <string name="menu_edit">编辑</string>
     <string name="menu_block_user">屏蔽用户</string>
     <string name="menu_leave">退出</string>
+    <string name="action_open">打开</string>
     <string name="action_message">发消息</string>
     <string name="action_join_chat">加入</string>
     <string name="action_report">举报</string>
@@ -272,6 +273,7 @@
     <string name="bot_permissions_subtitle">管理此机器人的权限</string>
     <string name="username_label">用户名</string>
     <string name="link_label">链接</string>
+    <string name="invite_link_label">邀请链接</string>
     <string name="bot_info_label">机器人信息</string>
     <string name="description_label">描述</string>
     <string name="bio_label">简介</string>

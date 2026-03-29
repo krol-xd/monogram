@@ -259,6 +259,7 @@
     <string name="menu_edit">Edit</string>
     <string name="menu_block_user">Block User</string>
     <string name="menu_leave">Leave</string>
+    <string name="action_open">Open</string>
     <string name="action_message">Message</string>
     <string name="action_join_chat">Join</string>
     <string name="action_report">Report</string>
@@ -274,6 +275,7 @@
     <string name="bot_permissions_subtitle">Manage permissions for this bot</string>
     <string name="username_label">Username</string>
     <string name="link_label">Link</string>
+    <string name="invite_link_label">Invitation Link</string>
     <string name="bot_info_label">Bot Info</string>
     <string name="description_label">Description</string>
     <string name="bio_label">Bio</string>

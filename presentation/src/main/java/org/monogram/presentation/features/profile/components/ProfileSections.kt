@@ -29,9 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
@@ -53,7 +51,6 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Portrait
-import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Security
@@ -224,7 +221,7 @@ private fun ProfileQuickActionsSkeleton(shimmer: androidx.compose.ui.graphics.Br
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         ) {
-            repeat(4) {
+            repeat(3) {
                 Column(
                     modifier = Modifier
                         .weight(1f, fill = true)
@@ -339,7 +336,6 @@ fun ProfileInfoSection(
     onEdit: () -> Unit = {},
     onLeave: () -> Unit = {},
     onJoin: () -> Unit = {},
-    onReport: () -> Unit = {},
     onShowLogs: () -> Unit = {},
     onShowStatistics: () -> Unit = {},
     onShowRevenueStatistics: () -> Unit = {},
@@ -432,12 +428,9 @@ fun ProfileInfoSection(
             isGroupOrChannel = isGroupOrChannel,
             isCurrentUser = isCurrentUser,
             onSendMessage = onSendMessage,
-            onToggleMute = onToggleMute,
             onLeave = onLeave,
             onJoin = onJoin,
-            onReport = onReport,
-            onShowQRCode = onShowQRCode,
-            onEdit = onEdit
+            onShowQRCode = onShowQRCode
         )
     }
 
@@ -530,20 +523,35 @@ fun ProfileInfoSection(
                 collectibleUsernames = collectibleUsernames,
                 disabledUsernames = disabledUsernames,
                 clipboardManager = clipboardManager,
+                isGroupOrChannel = isGroupOrChannel,
                 position = pos
             )
         }
     } else {
-        val displayLink = user?.username ?: chat?.username ?: state.publicLink
+        val displayLink = if (isGroupOrChannel) {
+            state.publicLink ?: chat?.username
+        } else {
+            user?.username ?: chat?.username ?: state.publicLink
+        }
         if (!displayLink.isNullOrEmpty()) {
             items.add { pos ->
                 val isLink = displayLink.startsWith("http", ignoreCase = true) ||
                         displayLink.startsWith("t.me", ignoreCase = true)
-                val finalTitle = if (isLink) displayLink else "@$displayLink"
-                val icon = if (isLink) Icons.Rounded.Link else Icons.Rounded.AlternateEmail
-                val subtitleText =
-                    if (isLink || isGroupOrChannel) stringResource(R.string.link_label)
-                    else stringResource(R.string.username_label)
+                val isPrivateInviteLink = isGroupOrChannel && isLink && (
+                        displayLink.contains("t.me/+", ignoreCase = true) ||
+                                displayLink.contains("joinchat", ignoreCase = true)
+                        )
+                val finalTitle = when {
+                    isGroupOrChannel && !isLink -> "https://t.me/$displayLink"
+                    isLink -> displayLink
+                    else -> "@$displayLink"
+                }
+                val icon = if (isGroupOrChannel || isLink) Icons.Rounded.Link else Icons.Rounded.AlternateEmail
+                val subtitleText = when {
+                    isPrivateInviteLink -> stringResource(R.string.invite_link_label)
+                    isGroupOrChannel || isLink -> stringResource(R.string.link_label)
+                    else -> stringResource(R.string.username_label)
+                }
 
                 SettingsTile(
                     icon = icon,
@@ -919,33 +927,20 @@ private fun ProfileQuickActions(
     isGroupOrChannel: Boolean,
     isCurrentUser: Boolean,
     onSendMessage: () -> Unit,
-    onToggleMute: () -> Unit,
     onLeave: () -> Unit,
     onJoin: () -> Unit,
-    onReport: () -> Unit,
-    onShowQRCode: () -> Unit,
-    onEdit: () -> Unit
+    onShowQRCode: () -> Unit
 ) {
     val chat = state.chat
-    val user = state.user
-    
+
     val items = mutableListOf<@Composable (Modifier) -> Unit>()
 
     if (!isCurrentUser) {
         items.add { mod ->
             QuickActionItem(
-                Icons.AutoMirrored.Filled.Chat, stringResource(R.string.action_message),
+                if (chat?.isChannel == true) Icons.AutoMirrored.Rounded.OpenInNew else Icons.AutoMirrored.Filled.Chat,
+                if (chat?.isChannel == true) stringResource(R.string.action_open) else stringResource(R.string.action_message),
                 onClick = onSendMessage,
-                modifier = mod
-            )
-        }
-
-        val isMuted = chat?.isMuted == true
-        items.add { mod ->
-            QuickActionItem(
-                if (isMuted) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
-                if (isMuted) stringResource(R.string.menu_unmute) else stringResource(R.string.menu_mute),
-                onClick = onToggleMute,
                 modifier = mod
             )
         }
@@ -963,43 +958,23 @@ private fun ProfileQuickActions(
         } else {
             items.add { mod ->
                 QuickActionItem(
-                    Icons.AutoMirrored.Rounded.Login, stringResource(R.string.action_join_chat),
+                    Icons.AutoMirrored.Rounded.Login,
+                    stringResource(R.string.action_join_chat),
                     onClick = onJoin,
                     modifier = mod
                 )
             }
         }
+    }
+
+    if (!isCurrentUser) {
         items.add { mod ->
             QuickActionItem(
-                Icons.Rounded.Report, stringResource(R.string.action_report),
-                onClick = onReport,
+                Icons.Default.QrCode,
+                stringResource(R.string.action_qr_code),
+                onClick = onShowQRCode,
                 modifier = mod
             )
-        }
-    } else {
-        val username = user?.username ?: chat?.username
-        if (!username.isNullOrEmpty()) {
-            items.add { mod ->
-                QuickActionItem(
-                    Icons.Default.QrCode, stringResource(R.string.action_qr_code),
-                    onClick = onShowQRCode,
-                    modifier = mod
-                )
-            }
-        }
-        
-        if (!isCurrentUser) {
-            val isContact = user?.isContact == true
-            if (isContact) {
-                items.add { mod ->
-                    QuickActionItem(
-                        Icons.Default.Edit,
-                        stringResource(R.string.menu_edit),
-                        onClick = onEdit,
-                        modifier = mod
-                    )
-                }
-            }
         }
     }
 
@@ -1443,6 +1418,7 @@ private fun UsernamesTile(
     collectibleUsernames: List<String>,
     disabledUsernames: List<String>,
     clipboardManager: ClipboardManager,
+    isGroupOrChannel: Boolean,
     position: ItemPosition
 ) {
     val allUsernames = (activeUsernames + collectibleUsernames + disabledUsernames).distinct()
@@ -1512,7 +1488,7 @@ private fun UsernamesTile(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = stringResource(R.string.username_label),
+                    text = if (isGroupOrChannel) stringResource(R.string.link_label) else stringResource(R.string.username_label),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )

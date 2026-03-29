@@ -140,6 +140,7 @@ fun ProfileContent(component: ProfileComponent) {
         if (isCurrentUserProfile) user.id.toString() else null
     }
     val canShareTopBar = !shareLink.isNullOrEmpty() || !fallbackShareText.isNullOrEmpty()
+    val canReportTopBar = isGroupOrChannel && !isCurrentUserProfile
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -156,6 +157,7 @@ fun ProfileContent(component: ProfileComponent) {
                     canSearch = false,
                     canShare = canShareTopBar,
                     canEdit = canEditTopBar,
+                    canReport = canReportTopBar,
                     canBlock = false,
                     canDelete = false,
                     onSearch = { Toast.makeText(context, searchNotImplemented, Toast.LENGTH_SHORT).show() },
@@ -168,6 +170,7 @@ fun ProfileContent(component: ProfileComponent) {
                         }
                     },
                     onEdit = component::onEdit,
+                    onReport = component::onShowReport,
                     onBlock = { Toast.makeText(context, blockNotImplemented, Toast.LENGTH_SHORT).show() },
                     onDelete = { Toast.makeText(context, deleteNotImplemented, Toast.LENGTH_SHORT).show() }
                 )
@@ -264,7 +267,6 @@ fun ProfileContent(component: ProfileComponent) {
                                     onEdit = component::onEdit,
                                     onLeave = component::onLeave,
                                     onJoin = component::onJoinChat,
-                                    onReport = component::onShowReport,
                                     onShowLogs = component::onShowLogs,
                                     onShowStatistics = component::onShowStatistics,
                                     onShowRevenueStatistics = component::onShowRevenueStatistics,

@@ -257,6 +257,7 @@
     <string name="menu_edit">Изменить</string>
     <string name="menu_block_user">Заблокировать</string>
     <string name="menu_leave">Покинуть</string>
+    <string name="action_open">Открыть</string>
     <string name="action_message">Сообщение</string>
     <string name="action_join_chat">Вступить</string>
     <string name="action_report">Пожаловаться</string>
@@ -272,6 +273,7 @@
     <string name="bot_permissions_subtitle">Управление правами этого бота</string>
     <string name="username_label">Имя пользователя</string>
     <string name="link_label">Ссылка</string>
+    <string name="invite_link_label">Ссылка-приглашение</string>
     <string name="bot_info_label">Информация о боте</string>
     <string name="description_label">Описание</string>
     <string name="bio_label">О себе</string>
