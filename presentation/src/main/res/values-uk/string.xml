@@ -547,6 +547,7 @@
     <string name="chat_settings_header">Налаштування чатів</string>
     <string name="appearance_header">Зовнішній вигляд</string>
     <string name="message_text_size_title">Розмір тексту повідомлень</string>
+    <string name="message_letter_spacing_title">Міжлітерний інтервал повідомлень</string>
     <string name="bubble_rounding_title">Скруглення блоків</string>
     <string name="reset_button">Скинути</string>
     <string name="chat_wallpaper_header">Шпалери чату</string>

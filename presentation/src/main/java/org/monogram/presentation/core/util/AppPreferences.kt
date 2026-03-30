@@ -42,6 +42,9 @@ class AppPreferences(
     private val _fontSize = MutableStateFlow(prefs.getFloat(KEY_FONT_SIZE, 16f))
     val fontSize: StateFlow<Float> = _fontSize
 
+    private val _letterSpacing = MutableStateFlow(prefs.getFloat(KEY_LETTER_SPACING, 0f))
+    val letterSpacing: StateFlow<Float> = _letterSpacing
+    
     private val _bubbleRadius = MutableStateFlow(prefs.getFloat(KEY_BUBBLE_RADIUS, 18f))
     val bubbleRadius: StateFlow<Float> = _bubbleRadius
 
@@ -373,6 +376,11 @@ class AppPreferences(
     fun setFontSize(size: Float) {
         prefs.edit().putFloat(KEY_FONT_SIZE, size).apply()
         _fontSize.value = size
+    }
+    
+    fun setLetterSpacing(spacing: Float) {
+        prefs.edit().putFloat(KEY_LETTER_SPACING, spacing).apply()
+        _letterSpacing.value = spacing
     }
 
     fun setBubbleRadius(radius: Float) {
@@ -957,6 +965,7 @@ class AppPreferences(
 
     companion object {
         private const val KEY_FONT_SIZE = "font_size"
+        private const val KEY_LETTER_SPACING = "letter_spacing"
         private const val KEY_BUBBLE_RADIUS = "bubble_radius"
         private const val KEY_WALLPAPER = "wallpaper"
         private const val KEY_WALLPAPER_BLURRED = "wallpaper_blurred"

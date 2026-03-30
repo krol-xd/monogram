@@ -567,6 +567,7 @@
     <string name="chat_settings_header">Chat Settings</string>
     <string name="appearance_header">Appearance</string>
     <string name="message_text_size_title">Message text size</string>
+    <string name="message_letter_spacing_title">Message letter spacing</string>
     <string name="bubble_rounding_title">Bubble rounding</string>
     <string name="reset_button">Reset</string>
     <string name="chat_wallpaper_header">Chat Wallpaper</string>

@@ -70,6 +70,7 @@ class DefaultChatComponent(
         ChatComponent.State(
             chatId = chatId,
             fontSize = appPreferences.fontSize.value,
+            letterSpacing = appPreferences.letterSpacing.value,
             bubbleRadius = appPreferences.bubbleRadius.value,
             wallpaper = appPreferences.wallpaper.value,
             isWallpaperBlurred = appPreferences.isWallpaperBlurred.value,

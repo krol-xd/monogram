@@ -50,6 +50,7 @@ fun VideoMessageBubble(
     isSameSenderAbove: Boolean,
     isSameSenderBelow: Boolean,
     fontSize: Float,
+    letterSpacing: Float,
     autoDownloadMobile: Boolean,
     autoDownloadWifi: Boolean,
     autoDownloadRoaming: Boolean,
@@ -394,6 +395,7 @@ fun VideoMessageBubble(
                             inlineContent = inlineContent,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontSize = fontSize.sp,
+                                letterSpacing = letterSpacing.sp,
                                 lineHeight = (fontSize * 1.375f).sp
                             ),
                             modifier = Modifier.padding(bottom = 4.dp),

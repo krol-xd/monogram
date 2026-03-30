@@ -46,6 +46,7 @@ fun ChatAlbumMessageBubble(
     toProfile: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     fontSize: Float = 16f,
+    letterSpacing: Float = 0f,
     downloadUtils: IDownloadUtils,
     videoPlayerPool: VideoPlayerPool,
     isAnyViewerOpen: Boolean = false
@@ -63,6 +64,7 @@ fun ChatAlbumMessageBubble(
             isSameSenderAbove = isSameSenderAbove,
             isSameSenderBelow = isSameSenderBelow,
             fontSize = fontSize,
+            letterSpacing = letterSpacing,
             autoDownloadFiles = autoDownloadFiles,
             autoDownloadMobile = autoDownloadMobile,
             autoDownloadWifi = autoDownloadWifi,
@@ -87,6 +89,7 @@ fun ChatAlbumMessageBubble(
             isSameSenderAbove = isSameSenderAbove,
             isSameSenderBelow = isSameSenderBelow,
             fontSize = fontSize,
+            letterSpacing = letterSpacing,
             autoDownloadFiles = autoDownloadFiles,
             autoDownloadMobile = autoDownloadMobile,
             autoDownloadWifi = autoDownloadWifi,
@@ -215,6 +218,7 @@ fun ChatAlbumMessageBubble(
                             inlineContent = inlineContent,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontSize = fontSize.sp,
+                                letterSpacing = letterSpacing.sp,
                                 lineHeight = (fontSize * 1.375f).sp
                             ),
                             color = if (isOutgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,

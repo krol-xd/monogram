@@ -44,6 +44,7 @@ fun PhotoMessageBubble(
     isSameSenderAbove: Boolean,
     isSameSenderBelow: Boolean,
     fontSize: Float,
+    letterSpacing: Float,
     isGroup: Boolean = false,
     autoDownloadMobile: Boolean,
     autoDownloadWifi: Boolean,
@@ -307,6 +308,7 @@ fun PhotoMessageBubble(
                             inlineContent = inlineContent,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontSize = fontSize.sp,
+                                letterSpacing = letterSpacing.sp,
                                 lineHeight = (fontSize * 1.375f).sp
                             ),
                             modifier = Modifier.padding(bottom = 4.dp),

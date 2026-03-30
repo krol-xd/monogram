@@ -569,6 +569,7 @@ private fun MessageBubbleSwitcher(
                         )
                     },
                     fontSize = state.fontSize,
+                    letterSpacing = state.letterSpacing,
                     bubbleRadius = state.bubbleRadius,
                     shouldReportPosition = item.message.id == selectedMessageId,
                     onPositionChange = { _, pos, size -> onMessagePositionChange(pos, size) },
@@ -588,6 +589,7 @@ private fun MessageBubbleSwitcher(
                     newerMsg = newerMsg,
                     isGroup = state.isGroup || state.currentTopicId != null,
                     fontSize = state.fontSize,
+                    letterSpacing = state.letterSpacing,
                     bubbleRadius = state.bubbleRadius,
                     autoDownloadMobile = state.autoDownloadMobile,
                     autoDownloadWifi = state.autoDownloadWifi,
@@ -819,7 +821,9 @@ private fun RootMessageSection(
                 onRetractVote = { component.onRetractVote(it) },
                 onShowVoters = { id, opt -> component.onShowVoters(id, opt) },
                 onClosePoll = { component.onClosePoll(it) },
-                fontSize = state.fontSize, bubbleRadius = state.bubbleRadius,
+                fontSize = state.fontSize,
+                letterSpacing = state.letterSpacing,
+                bubbleRadius = state.bubbleRadius,
                 onCommentsClick = {}, showComments = false,
                 toProfile = toProfile,
                 onViaBotClick = onViaBotClick,
@@ -832,7 +836,9 @@ private fun RootMessageSection(
         } else {
             MessageBubbleContainer(
                 msg = root, olderMsg = null, newerMsg = null, isGroup = state.isGroup,
-                fontSize = state.fontSize, bubbleRadius = state.bubbleRadius,
+                fontSize = state.fontSize,
+                letterSpacing = state.letterSpacing,
+                bubbleRadius = state.bubbleRadius,
                 autoDownloadMobile = state.autoDownloadMobile, autoDownloadWifi = state.autoDownloadWifi,
                 autoDownloadRoaming = state.autoDownloadRoaming, autoDownloadFiles = state.autoDownloadFiles,
                 autoplayGifs = state.autoplayGifs, autoplayVideos = state.autoplayVideos,

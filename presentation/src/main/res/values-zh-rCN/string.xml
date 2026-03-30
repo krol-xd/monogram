@@ -547,6 +547,7 @@
     <string name="chat_settings_header">会话设置</string>
     <string name="appearance_header">外观</string>
     <string name="message_text_size_title">消息文字大小</string>
+    <string name="message_letter_spacing_title">字元間距</string>
     <string name="bubble_rounding_title">气泡圆角</string>
     <string name="reset_button">重置</string>
     <string name="chat_wallpaper_header">会话壁纸</string>
