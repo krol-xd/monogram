@@ -1,10 +1,9 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/monogram-android/monogram"><img width="130" height="130" alt="image" src="https://github.com/user-attachments/assets/1882f65d-8950-4df7-8607-6580d7604eb1" />
-
+  <a href="https://github.com/monogram-android/monogram"><img width="130" height="130" alt="MonoGram" src="./documents/monogram.png" />
 </a>
   <br>
-  <b>Monogram</b>
+  <b>MonoGram</b>
   <br>
 </h1>
 
@@ -27,10 +26,10 @@
 
 ---
 
-**Monogram** — это современный, молниеносный и элегантный неофициальный клиент Telegram для Android. Созданный с использованием **Jetpack Compose** и **Material Design 3**, он обеспечивает нативный и плавный опыт использования на базе официальной библиотеки **TDLib**.
+**MonoGram** — это современный, молниеносный и элегантный неофициальный клиент Telegram для Android. Созданный с использованием **Jetpack Compose** и **Material Design 3**, он обеспечивает нативный и плавный опыт использования на базе официальной библиотеки **TDLib**.
 
 > [!IMPORTANT]
-> Monogram находится в стадии **активной разработки**. Ожидайте частых обновлений, архитектурных изменений и возможных ошибок.
+> MonoGram находится в стадии **активной разработки**. Ожидайте частых обновлений, архитектурных изменений и возможных ошибок.
 
 Поддержите наш проект на [**Boosty**](https://boosty.to/monogram).
 
@@ -56,7 +55,7 @@
 - **Быстродействие** — Работает на Kotlin Coroutines и оптимизирован для производительности.
 - **Clean Architecture** — Чёткое разделение ответственности с помощью слоёв Domain, Data и Presentation.
 - **Паттерн MVI** — Предсказуемое управление состоянием с использованием MVIKotlin.
-- **Без NFT и крипты** — Monogram никогда не будет включать NFT, подарки и прочие функции, продвигаемые Telegram, которые мы считаем лишними в мессенджере.
+- **Без NFT и крипты** — MonoGram никогда не будет включать NFT, подарки и прочие функции, продвигаемые Telegram, которые мы считаем лишними в мессенджере.
 
 ---
 
@@ -164,7 +163,7 @@ sudo apt-get install build-essential git curl wget php perl gperf unzip zip defa
 
 ## Переводы
 
-Monogram приветствует переводы от сообщества! Вы можете добавить свой язык, отредактировав файл строковых ресурсов.
+MonoGram приветствует переводы от сообщества! Вы можете добавить свой язык, отредактировав файл строковых ресурсов.
 
 Исходные строки находятся в [`presentation/src/main/res/values/string.xml`](https://github.com/monogram-android/monogram/blob/develop/presentation/src/main/res/values/string.xml). Чтобы добавить новый язык, создайте соответствующий файл `values-<locale>/string.xml` (например, `values-de/string.xml` для немецкого) и переведите строки. Откройте PR с вашим переводом — мы его рассмотрим и примем.
 
@@ -172,7 +171,7 @@ Monogram приветствует переводы от сообщества! В
 
 ## Технологический стек
 
-Monogram использует новейшие инструменты и библиотеки для разработки под Android:
+MonoGram использует новейшие инструменты и библиотеки для разработки под Android:
 
 | Категория | Библиотеки |
 |:---|:---|
