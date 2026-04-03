@@ -42,7 +42,7 @@
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/452cd6b0-1531-4813-b090-e35a511b1388" width="180" alt="Скриншот 1" /> | <img src="https://github.com/user-attachments/assets/e8546f43-4fea-4be0-b8f7-d38447113506" width="180" alt="Скриншот 2" /> | <img src="https://github.com/user-attachments/assets/8f11ad2f-e80f-4d5b-89ab-6886ec035ac3" width="180" alt="Скриншот 3" /> | <img src="https://github.com/user-attachments/assets/1137ed58-7eff-45a5-9db3-4d08366dc5a6" width="180" alt="Скриншот 4" /> |
+| <img src="./documents/1.png" width="180" alt="Скриншот 1" /> | <img src="./documents/2.png" width="180" alt="Скриншот 2" /> | <img src="./documents/3.png" width="180" alt="Скриншот 3" /> | <img src="./documents/4.png" width="180" alt="Скриншот 4" /> |
 
 </div>
 
